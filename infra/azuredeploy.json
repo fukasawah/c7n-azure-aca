@@ -1,0 +1,2009 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.42.1.51946",
+      "templateHash": "5339506017506820676"
+    }
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "japaneast",
+      "metadata": {
+        "description": "Azure region for all resources"
+      }
+    },
+    "resourceGroupName": {
+      "type": "string",
+      "defaultValue": "rg-custodian",
+      "metadata": {
+        "description": "Resource group name"
+      }
+    },
+    "environmentName": {
+      "type": "string",
+      "defaultValue": "custodian-env",
+      "metadata": {
+        "description": "Container Apps Environment name"
+      }
+    },
+    "storageAccountName": {
+      "type": "string",
+      "metadata": {
+        "description": "Storage account name (globally unique)"
+      }
+    },
+    "identityName": {
+      "type": "string",
+      "defaultValue": "custodian-identity",
+      "metadata": {
+        "description": "Managed Identity name"
+      }
+    },
+    "containerImage": {
+      "type": "string",
+      "defaultValue": "ghcr.io/fukasawah/c7n-azure-aca:latest",
+      "metadata": {
+        "description": "Container image reference"
+      }
+    },
+    "scheduleExpression": {
+      "type": "string",
+      "defaultValue": "*/15 * * * *",
+      "metadata": {
+        "description": "Cron expression for scheduled policy execution"
+      }
+    },
+    "targetSubscriptionIds": {
+      "type": "array",
+      "metadata": {
+        "description": "Target subscription IDs for policy enforcement"
+      }
+    },
+    "createAndAssignCustomRole": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Create a custom role for the managed identity and assign it to the target scopes"
+      }
+    },
+    "customRoleName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional custom role name override. Leave empty to use a deterministic default name."
+      }
+    },
+    "watchVirtualMachineWriteEvents": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Watch virtual machine write events in Event Grid"
+      }
+    },
+    "watchStorageAccountWriteEvents": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Watch storage account write events in Event Grid"
+      }
+    },
+    "watchAppServiceWriteEvents": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Watch App Service write events in Event Grid"
+      }
+    },
+    "watchSqlDatabaseWriteEvents": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Watch Azure SQL database write events in Event Grid"
+      }
+    },
+    "allowTagManagement": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Allow resource tag updates through the managed identity custom role"
+      }
+    },
+    "allowVirtualMachinePowerControl": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Allow virtual machine power operations through the managed identity custom role"
+      }
+    },
+    "allowAppServiceAppSettingsManagement": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Allow App Service app setting updates through the managed identity custom role"
+      }
+    },
+    "targetRoleAssignmentScope": {
+      "type": "string",
+      "defaultValue": "subscription",
+      "allowedValues": [
+        "subscription",
+        "resource-group"
+      ],
+      "metadata": {
+        "description": "Scope used for managed identity RBAC on target resources"
+      }
+    },
+    "targetResourceGroupName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Target resource group name for managed identity RBAC when using resource-group scope"
+      }
+    },
+    "queueName": {
+      "type": "string",
+      "defaultValue": "custodian-events",
+      "metadata": {
+        "description": "Storage Queue name for events"
+      }
+    },
+    "jobCpu": {
+      "type": "string",
+      "defaultValue": "0.25",
+      "metadata": {
+        "description": "Job CPU allocation"
+      }
+    },
+    "jobMemory": {
+      "type": "string",
+      "defaultValue": "0.5Gi",
+      "metadata": {
+        "description": "Job memory allocation"
+      }
+    },
+    "logRetentionInDays": {
+      "type": "int",
+      "defaultValue": 90,
+      "minValue": 30,
+      "maxValue": 730,
+      "metadata": {
+        "description": "Log Analytics retention in days (30-730)"
+      }
+    },
+    "enableAlerts": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Enable monitoring alert rules"
+      }
+    },
+    "alertQueueDepthThreshold": {
+      "type": "int",
+      "defaultValue": 100,
+      "metadata": {
+        "description": "Queue depth threshold for alerting"
+      }
+    },
+    "alertJobFailureThreshold": {
+      "type": "int",
+      "defaultValue": 3,
+      "metadata": {
+        "description": "Job failure count threshold for alerting (per 5-minute window)"
+      }
+    },
+    "maxExecutions": {
+      "type": "int",
+      "defaultValue": 10,
+      "minValue": 1,
+      "maxValue": 100,
+      "metadata": {
+        "description": "Maximum concurrent event job executions (KEDA scaling)"
+      }
+    },
+    "tags": {
+      "type": "object",
+      "defaultValue": {}
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "c7n-azure-aca-deployment",
+      "location": "[deployment().location]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "resourceGroupName": {
+            "value": "[parameters('resourceGroupName')]"
+          },
+          "environmentName": {
+            "value": "[parameters('environmentName')]"
+          },
+          "storageAccountName": {
+            "value": "[parameters('storageAccountName')]"
+          },
+          "identityName": {
+            "value": "[parameters('identityName')]"
+          },
+          "containerImage": {
+            "value": "[parameters('containerImage')]"
+          },
+          "scheduleExpression": {
+            "value": "[parameters('scheduleExpression')]"
+          },
+          "targetSubscriptionIds": {
+            "value": "[parameters('targetSubscriptionIds')]"
+          },
+          "createAndAssignCustomRole": {
+            "value": "[parameters('createAndAssignCustomRole')]"
+          },
+          "customRoleName": {
+            "value": "[parameters('customRoleName')]"
+          },
+          "watchVirtualMachineWriteEvents": {
+            "value": "[parameters('watchVirtualMachineWriteEvents')]"
+          },
+          "watchStorageAccountWriteEvents": {
+            "value": "[parameters('watchStorageAccountWriteEvents')]"
+          },
+          "watchAppServiceWriteEvents": {
+            "value": "[parameters('watchAppServiceWriteEvents')]"
+          },
+          "watchSqlDatabaseWriteEvents": {
+            "value": "[parameters('watchSqlDatabaseWriteEvents')]"
+          },
+          "allowTagManagement": {
+            "value": "[parameters('allowTagManagement')]"
+          },
+          "allowVirtualMachinePowerControl": {
+            "value": "[parameters('allowVirtualMachinePowerControl')]"
+          },
+          "allowAppServiceAppSettingsManagement": {
+            "value": "[parameters('allowAppServiceAppSettingsManagement')]"
+          },
+          "targetRoleAssignmentScope": {
+            "value": "[parameters('targetRoleAssignmentScope')]"
+          },
+          "targetResourceGroupName": {
+            "value": "[parameters('targetResourceGroupName')]"
+          },
+          "queueName": {
+            "value": "[parameters('queueName')]"
+          },
+          "jobCpu": {
+            "value": "[parameters('jobCpu')]"
+          },
+          "jobMemory": {
+            "value": "[parameters('jobMemory')]"
+          },
+          "logRetentionInDays": {
+            "value": "[parameters('logRetentionInDays')]"
+          },
+          "enableAlerts": {
+            "value": "[parameters('enableAlerts')]"
+          },
+          "alertQueueDepthThreshold": {
+            "value": "[parameters('alertQueueDepthThreshold')]"
+          },
+          "alertJobFailureThreshold": {
+            "value": "[parameters('alertJobFailureThreshold')]"
+          },
+          "maxExecutions": {
+            "value": "[parameters('maxExecutions')]"
+          },
+          "tags": {
+            "value": "[parameters('tags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.42.1.51946",
+              "templateHash": "3262721768912907031"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string",
+              "defaultValue": "japaneast",
+              "metadata": {
+                "description": "Azure region for all resources"
+              }
+            },
+            "resourceGroupName": {
+              "type": "string",
+              "defaultValue": "rg-custodian",
+              "metadata": {
+                "description": "Resource group name"
+              }
+            },
+            "environmentName": {
+              "type": "string",
+              "defaultValue": "custodian-env",
+              "metadata": {
+                "description": "Container Apps Environment name"
+              }
+            },
+            "storageAccountName": {
+              "type": "string",
+              "metadata": {
+                "description": "Storage account name (globally unique)"
+              }
+            },
+            "identityName": {
+              "type": "string",
+              "defaultValue": "custodian-identity",
+              "metadata": {
+                "description": "Managed Identity name"
+              }
+            },
+            "containerImage": {
+              "type": "string",
+              "defaultValue": "ghcr.io/fukasawah/c7n-azure-aca:latest",
+              "metadata": {
+                "description": "Container image reference"
+              }
+            },
+            "scheduleExpression": {
+              "type": "string",
+              "defaultValue": "*/15 * * * *",
+              "metadata": {
+                "description": "Cron expression for scheduled policy execution"
+              }
+            },
+            "targetSubscriptionIds": {
+              "type": "array",
+              "metadata": {
+                "description": "Target subscription IDs for policy enforcement"
+              }
+            },
+            "eventOperationNames": {
+              "type": "array",
+              "defaultValue": [],
+              "metadata": {
+                "description": "Event Grid operation name filter (e.g. [\"Microsoft.Compute/virtualMachines/write\"])"
+              }
+            },
+            "createAndAssignCustomRole": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Create a custom role for the managed identity and assign it to the target scopes"
+              }
+            },
+            "customRoleName": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Optional custom role name override. Leave empty to use a deterministic default name."
+              }
+            },
+            "watchVirtualMachineWriteEvents": {
+              "type": "bool",
+              "defaultValue": true,
+              "metadata": {
+                "description": "Watch virtual machine write events in Event Grid"
+              }
+            },
+            "watchStorageAccountWriteEvents": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Watch storage account write events in Event Grid"
+              }
+            },
+            "watchAppServiceWriteEvents": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Watch App Service write events in Event Grid"
+              }
+            },
+            "watchSqlDatabaseWriteEvents": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Watch Azure SQL database write events in Event Grid"
+              }
+            },
+            "allowTagManagement": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Allow resource tag updates through the managed identity custom role"
+              }
+            },
+            "allowVirtualMachinePowerControl": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Allow virtual machine power operations through the managed identity custom role"
+              }
+            },
+            "allowAppServiceAppSettingsManagement": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Allow App Service app setting updates through the managed identity custom role"
+              }
+            },
+            "assignContributorRole": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Assign Contributor role to UAI on target subscriptions (for mutating actions)"
+              }
+            },
+            "targetRoleAssignmentScope": {
+              "type": "string",
+              "defaultValue": "subscription",
+              "allowedValues": [
+                "subscription",
+                "resource-group"
+              ],
+              "metadata": {
+                "description": "Scope used for managed identity RBAC on target resources"
+              }
+            },
+            "targetResourceGroupName": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Target resource group name for managed identity RBAC when using resource-group scope"
+              }
+            },
+            "queueName": {
+              "type": "string",
+              "defaultValue": "custodian-events",
+              "metadata": {
+                "description": "Storage Queue name for events"
+              }
+            },
+            "jobCpu": {
+              "type": "string",
+              "defaultValue": "0.25",
+              "metadata": {
+                "description": "Job CPU allocation"
+              }
+            },
+            "jobMemory": {
+              "type": "string",
+              "defaultValue": "0.5Gi",
+              "metadata": {
+                "description": "Job memory allocation"
+              }
+            },
+            "logRetentionInDays": {
+              "type": "int",
+              "defaultValue": 90,
+              "minValue": 30,
+              "maxValue": 730,
+              "metadata": {
+                "description": "Log Analytics retention in days (30-730)"
+              }
+            },
+            "enableAlerts": {
+              "type": "bool",
+              "defaultValue": true,
+              "metadata": {
+                "description": "Enable monitoring alert rules"
+              }
+            },
+            "alertQueueDepthThreshold": {
+              "type": "int",
+              "defaultValue": 100,
+              "metadata": {
+                "description": "Queue depth threshold for alerting"
+              }
+            },
+            "alertJobFailureThreshold": {
+              "type": "int",
+              "defaultValue": 3,
+              "metadata": {
+                "description": "Job failure count threshold for alerting (per 5-minute window)"
+              }
+            },
+            "maxExecutions": {
+              "type": "int",
+              "defaultValue": 10,
+              "minValue": 1,
+              "maxValue": 100,
+              "metadata": {
+                "description": "Maximum concurrent event job executions (KEDA scaling)"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {}
+            }
+          },
+          "variables": {
+            "copy": [
+              {
+                "name": "subscriptionCustomRoleAssignableScopes",
+                "count": "[length(parameters('targetSubscriptionIds'))]",
+                "input": "[format('/subscriptions/{0}', parameters('targetSubscriptionIds')[copyIndex('subscriptionCustomRoleAssignableScopes')])]"
+              },
+              {
+                "name": "resourceGroupCustomRoleAssignableScopes",
+                "count": "[length(parameters('targetSubscriptionIds'))]",
+                "input": "[format('/subscriptions/{0}/resourceGroups/{1}', parameters('targetSubscriptionIds')[copyIndex('resourceGroupCustomRoleAssignableScopes')], parameters('targetResourceGroupName'))]"
+              }
+            ],
+            "subscriptionIdsCsv": "[join(parameters('targetSubscriptionIds'), ',')]",
+            "toggledEventOperationNames": "[union(if(parameters('watchVirtualMachineWriteEvents'), createArray('Microsoft.Compute/virtualMachines/write'), createArray()), if(parameters('watchStorageAccountWriteEvents'), createArray('Microsoft.Storage/storageAccounts/write'), createArray()), if(parameters('watchAppServiceWriteEvents'), createArray('Microsoft.Web/sites/write'), createArray()), if(parameters('watchSqlDatabaseWriteEvents'), createArray('Microsoft.Sql/servers/databases/write'), createArray()))]",
+            "effectiveEventOperationNames": "[if(not(empty(parameters('eventOperationNames'))), parameters('eventOperationNames'), variables('toggledEventOperationNames'))]",
+            "customRoleAssignableScopes": "[if(equals(parameters('targetRoleAssignmentScope'), 'subscription'), variables('subscriptionCustomRoleAssignableScopes'), variables('resourceGroupCustomRoleAssignableScopes'))]",
+            "effectiveCustomRoleName": "[if(not(empty(parameters('customRoleName'))), parameters('customRoleName'), format('{0}-managed-identity-role', parameters('resourceGroupName')))]",
+            "customRoleActions": "[union(createArray('Microsoft.Resources/subscriptions/read', 'Microsoft.Resources/subscriptions/resourceGroups/read'), if(parameters('allowTagManagement'), createArray('Microsoft.Resources/subscriptions/resources/read', 'Microsoft.Resources/subscriptions/resourceGroups/resources/read', 'Microsoft.Resources/tags/read', 'Microsoft.Resources/tags/write'), createArray()), if(parameters('allowVirtualMachinePowerControl'), createArray('Microsoft.Compute/virtualMachines/read', 'Microsoft.Compute/virtualMachines/start/action', 'Microsoft.Compute/virtualMachines/restart/action', 'Microsoft.Compute/virtualMachines/powerOff/action', 'Microsoft.Compute/virtualMachines/deallocate/action'), createArray()), if(parameters('allowAppServiceAppSettingsManagement'), createArray('Microsoft.Web/sites/read', 'Microsoft.Web/sites/config/read', 'microsoft.web/sites/config/web/appsettings/write', 'microsoft.web/sites/config/web/appsettings/delete'), createArray()))]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Resources/resourceGroups",
+              "apiVersion": "2024-03-01",
+              "name": "[parameters('resourceGroupName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]"
+            },
+            {
+              "condition": "[parameters('createAndAssignCustomRole')]",
+              "type": "Microsoft.Resources/deployments",
+              "apiVersion": "2025-04-01",
+              "name": "custom-role-definition",
+              "location": "[deployment().location]",
+              "properties": {
+                "expressionEvaluationOptions": {
+                  "scope": "inner"
+                },
+                "mode": "Incremental",
+                "parameters": {
+                  "roleName": {
+                    "value": "[variables('effectiveCustomRoleName')]"
+                  },
+                  "roleDescription": {
+                    "value": "[format('Managed identity role for {0}. Generated from template toggle parameters.', parameters('resourceGroupName'))]"
+                  },
+                  "assignableScopes": {
+                    "value": "[variables('customRoleAssignableScopes')]"
+                  },
+                  "actions": {
+                    "value": "[variables('customRoleActions')]"
+                  }
+                },
+                "template": {
+                  "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+                  "contentVersion": "1.0.0.0",
+                  "metadata": {
+                    "_generator": {
+                      "name": "bicep",
+                      "version": "0.42.1.51946",
+                      "templateHash": "6717041105205201486"
+                    }
+                  },
+                  "parameters": {
+                    "roleName": {
+                      "type": "string",
+                      "metadata": {
+                        "description": "Display name of the custom role"
+                      }
+                    },
+                    "roleDescription": {
+                      "type": "string",
+                      "metadata": {
+                        "description": "Description of the custom role"
+                      }
+                    },
+                    "assignableScopes": {
+                      "type": "array",
+                      "metadata": {
+                        "description": "Assignable scopes for the custom role"
+                      }
+                    },
+                    "actions": {
+                      "type": "array",
+                      "metadata": {
+                        "description": "Allowed control-plane actions for the custom role"
+                      }
+                    },
+                    "notActions": {
+                      "type": "array",
+                      "defaultValue": [],
+                      "metadata": {
+                        "description": "Excluded control-plane actions for the custom role"
+                      }
+                    }
+                  },
+                  "variables": {
+                    "roleDefinitionGuid": "[guid(parameters('roleName'))]"
+                  },
+                  "resources": [
+                    {
+                      "type": "Microsoft.Authorization/roleDefinitions",
+                      "apiVersion": "2022-04-01",
+                      "name": "[variables('roleDefinitionGuid')]",
+                      "properties": {
+                        "roleName": "[parameters('roleName')]",
+                        "description": "[parameters('roleDescription')]",
+                        "type": "CustomRole",
+                        "permissions": [
+                          {
+                            "actions": "[parameters('actions')]",
+                            "notActions": "[parameters('notActions')]"
+                          }
+                        ],
+                        "assignableScopes": "[parameters('assignableScopes')]"
+                      }
+                    }
+                  ],
+                  "outputs": {
+                    "roleDefinitionId": {
+                      "type": "string",
+                      "value": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roleDefinitionGuid'))]"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "type": "Microsoft.Resources/deployments",
+              "apiVersion": "2025-04-01",
+              "name": "identity",
+              "resourceGroup": "[parameters('resourceGroupName')]",
+              "properties": {
+                "expressionEvaluationOptions": {
+                  "scope": "inner"
+                },
+                "mode": "Incremental",
+                "parameters": {
+                  "location": {
+                    "value": "[parameters('location')]"
+                  },
+                  "identityName": {
+                    "value": "[parameters('identityName')]"
+                  },
+                  "tags": {
+                    "value": "[parameters('tags')]"
+                  }
+                },
+                "template": {
+                  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                  "contentVersion": "1.0.0.0",
+                  "metadata": {
+                    "_generator": {
+                      "name": "bicep",
+                      "version": "0.42.1.51946",
+                      "templateHash": "17880585958227097072"
+                    }
+                  },
+                  "parameters": {
+                    "location": {
+                      "type": "string"
+                    },
+                    "identityName": {
+                      "type": "string"
+                    },
+                    "tags": {
+                      "type": "object",
+                      "defaultValue": {}
+                    }
+                  },
+                  "resources": [
+                    {
+                      "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+                      "apiVersion": "2023-01-31",
+                      "name": "[parameters('identityName')]",
+                      "location": "[parameters('location')]",
+                      "tags": "[parameters('tags')]"
+                    }
+                  ],
+                  "outputs": {
+                    "identityId": {
+                      "type": "string",
+                      "value": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identityName'))]"
+                    },
+                    "identityPrincipalId": {
+                      "type": "string",
+                      "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identityName')), '2023-01-31').principalId]"
+                    },
+                    "identityClientId": {
+                      "type": "string",
+                      "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identityName')), '2023-01-31').clientId]"
+                    }
+                  }
+                }
+              },
+              "dependsOn": [
+                "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Resources/deployments",
+              "apiVersion": "2025-04-01",
+              "name": "storage",
+              "resourceGroup": "[parameters('resourceGroupName')]",
+              "properties": {
+                "expressionEvaluationOptions": {
+                  "scope": "inner"
+                },
+                "mode": "Incremental",
+                "parameters": {
+                  "location": {
+                    "value": "[parameters('location')]"
+                  },
+                  "storageAccountName": {
+                    "value": "[parameters('storageAccountName')]"
+                  },
+                  "queueName": {
+                    "value": "[parameters('queueName')]"
+                  },
+                  "tags": {
+                    "value": "[parameters('tags')]"
+                  }
+                },
+                "template": {
+                  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                  "contentVersion": "1.0.0.0",
+                  "metadata": {
+                    "_generator": {
+                      "name": "bicep",
+                      "version": "0.42.1.51946",
+                      "templateHash": "17570304510216561438"
+                    }
+                  },
+                  "parameters": {
+                    "location": {
+                      "type": "string"
+                    },
+                    "storageAccountName": {
+                      "type": "string"
+                    },
+                    "queueName": {
+                      "type": "string",
+                      "defaultValue": "custodian-events"
+                    },
+                    "tags": {
+                      "type": "object",
+                      "defaultValue": {}
+                    },
+                    "networkDefaultAction": {
+                      "type": "string",
+                      "defaultValue": "Allow",
+                      "allowedValues": [
+                        "Allow",
+                        "Deny"
+                      ],
+                      "metadata": {
+                        "description": "Network default action. Use Deny with ipRules for production hardening."
+                      }
+                    },
+                    "networkIpRules": {
+                      "type": "array",
+                      "defaultValue": [],
+                      "metadata": {
+                        "description": "IP rules for storage firewall (only effective when networkDefaultAction is Deny)"
+                      }
+                    },
+                    "skuName": {
+                      "type": "string",
+                      "defaultValue": "Standard_LRS",
+                      "allowedValues": [
+                        "Standard_LRS",
+                        "Standard_ZRS",
+                        "Standard_GRS",
+                        "Standard_RAGRS"
+                      ],
+                      "metadata": {
+                        "description": "Storage account SKU. Use Standard_ZRS for production zone-redundancy."
+                      }
+                    }
+                  },
+                  "resources": [
+                    {
+                      "type": "Microsoft.Storage/storageAccounts",
+                      "apiVersion": "2023-05-01",
+                      "name": "[parameters('storageAccountName')]",
+                      "location": "[parameters('location')]",
+                      "tags": "[parameters('tags')]",
+                      "sku": {
+                        "name": "[parameters('skuName')]"
+                      },
+                      "kind": "StorageV2",
+                      "properties": {
+                        "supportsHttpsTrafficOnly": true,
+                        "minimumTlsVersion": "TLS1_2",
+                        "allowBlobPublicAccess": false,
+                        "allowSharedKeyAccess": false,
+                        "networkAcls": {
+                          "copy": [
+                            {
+                              "name": "ipRules",
+                              "count": "[length(parameters('networkIpRules'))]",
+                              "input": {
+                                "value": "[parameters('networkIpRules')[copyIndex('ipRules')]]",
+                                "action": "Allow"
+                              }
+                            }
+                          ],
+                          "defaultAction": "[parameters('networkDefaultAction')]",
+                          "bypass": "AzureServices"
+                        }
+                      }
+                    },
+                    {
+                      "type": "Microsoft.Storage/storageAccounts/queueServices",
+                      "apiVersion": "2023-05-01",
+                      "name": "[format('{0}/{1}', parameters('storageAccountName'), 'default')]",
+                      "dependsOn": [
+                        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+                      ]
+                    },
+                    {
+                      "type": "Microsoft.Storage/storageAccounts/queueServices/queues",
+                      "apiVersion": "2023-05-01",
+                      "name": "[format('{0}/{1}/{2}', parameters('storageAccountName'), 'default', parameters('queueName'))]",
+                      "dependsOn": [
+                        "[resourceId('Microsoft.Storage/storageAccounts/queueServices', parameters('storageAccountName'), 'default')]"
+                      ]
+                    },
+                    {
+                      "type": "Microsoft.Storage/storageAccounts/blobServices",
+                      "apiVersion": "2023-05-01",
+                      "name": "[format('{0}/{1}', parameters('storageAccountName'), 'default')]",
+                      "dependsOn": [
+                        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+                      ]
+                    },
+                    {
+                      "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+                      "apiVersion": "2023-05-01",
+                      "name": "[format('{0}/{1}/{2}', parameters('storageAccountName'), 'default', 'policies')]",
+                      "dependsOn": [
+                        "[resourceId('Microsoft.Storage/storageAccounts/blobServices', parameters('storageAccountName'), 'default')]"
+                      ]
+                    },
+                    {
+                      "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+                      "apiVersion": "2023-05-01",
+                      "name": "[format('{0}/{1}/{2}', parameters('storageAccountName'), 'default', 'output')]",
+                      "dependsOn": [
+                        "[resourceId('Microsoft.Storage/storageAccounts/blobServices', parameters('storageAccountName'), 'default')]"
+                      ]
+                    },
+                    {
+                      "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+                      "apiVersion": "2023-05-01",
+                      "name": "[format('{0}/{1}/{2}', parameters('storageAccountName'), 'default', 'event-deadletter')]",
+                      "dependsOn": [
+                        "[resourceId('Microsoft.Storage/storageAccounts/blobServices', parameters('storageAccountName'), 'default')]"
+                      ]
+                    }
+                  ],
+                  "outputs": {
+                    "storageAccountId": {
+                      "type": "string",
+                      "value": "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+                    },
+                    "storageAccountName": {
+                      "type": "string",
+                      "value": "[parameters('storageAccountName')]"
+                    }
+                  }
+                }
+              },
+              "dependsOn": [
+                "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Resources/deployments",
+              "apiVersion": "2025-04-01",
+              "name": "log-analytics",
+              "resourceGroup": "[parameters('resourceGroupName')]",
+              "properties": {
+                "expressionEvaluationOptions": {
+                  "scope": "inner"
+                },
+                "mode": "Incremental",
+                "parameters": {
+                  "location": {
+                    "value": "[parameters('location')]"
+                  },
+                  "workspaceName": {
+                    "value": "[format('{0}-logs', parameters('environmentName'))]"
+                  },
+                  "retentionInDays": {
+                    "value": "[parameters('logRetentionInDays')]"
+                  },
+                  "tags": {
+                    "value": "[parameters('tags')]"
+                  }
+                },
+                "template": {
+                  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                  "contentVersion": "1.0.0.0",
+                  "metadata": {
+                    "_generator": {
+                      "name": "bicep",
+                      "version": "0.42.1.51946",
+                      "templateHash": "12075513485696688590"
+                    }
+                  },
+                  "parameters": {
+                    "location": {
+                      "type": "string"
+                    },
+                    "workspaceName": {
+                      "type": "string"
+                    },
+                    "tags": {
+                      "type": "object",
+                      "defaultValue": {}
+                    },
+                    "retentionInDays": {
+                      "type": "int",
+                      "defaultValue": 90,
+                      "minValue": 30,
+                      "maxValue": 730,
+                      "metadata": {
+                        "description": "Log retention in days (30-730)"
+                      }
+                    }
+                  },
+                  "resources": [
+                    {
+                      "type": "Microsoft.OperationalInsights/workspaces",
+                      "apiVersion": "2023-09-01",
+                      "name": "[parameters('workspaceName')]",
+                      "location": "[parameters('location')]",
+                      "tags": "[parameters('tags')]",
+                      "properties": {
+                        "sku": {
+                          "name": "PerGB2018"
+                        },
+                        "retentionInDays": "[parameters('retentionInDays')]"
+                      }
+                    }
+                  ],
+                  "outputs": {
+                    "workspaceId": {
+                      "type": "string",
+                      "value": "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('workspaceName'))]"
+                    }
+                  }
+                }
+              },
+              "dependsOn": [
+                "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Resources/deployments",
+              "apiVersion": "2025-04-01",
+              "name": "container-apps-env",
+              "resourceGroup": "[parameters('resourceGroupName')]",
+              "properties": {
+                "expressionEvaluationOptions": {
+                  "scope": "inner"
+                },
+                "mode": "Incremental",
+                "parameters": {
+                  "location": {
+                    "value": "[parameters('location')]"
+                  },
+                  "environmentName": {
+                    "value": "[parameters('environmentName')]"
+                  },
+                  "logAnalyticsWorkspaceId": {
+                    "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'log-analytics'), '2025-04-01').outputs.workspaceId.value]"
+                  },
+                  "tags": {
+                    "value": "[parameters('tags')]"
+                  }
+                },
+                "template": {
+                  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                  "contentVersion": "1.0.0.0",
+                  "metadata": {
+                    "_generator": {
+                      "name": "bicep",
+                      "version": "0.42.1.51946",
+                      "templateHash": "13485076300922142488"
+                    }
+                  },
+                  "parameters": {
+                    "location": {
+                      "type": "string"
+                    },
+                    "environmentName": {
+                      "type": "string"
+                    },
+                    "logAnalyticsWorkspaceId": {
+                      "type": "string"
+                    },
+                    "tags": {
+                      "type": "object",
+                      "defaultValue": {}
+                    }
+                  },
+                  "resources": [
+                    {
+                      "type": "Microsoft.App/managedEnvironments",
+                      "apiVersion": "2024-03-01",
+                      "name": "[parameters('environmentName')]",
+                      "location": "[parameters('location')]",
+                      "tags": "[parameters('tags')]",
+                      "properties": {
+                        "appLogsConfiguration": {
+                          "destination": "log-analytics",
+                          "logAnalyticsConfiguration": {
+                            "customerId": "[reference(parameters('logAnalyticsWorkspaceId'), '2023-09-01').customerId]",
+                            "sharedKey": "[listKeys(parameters('logAnalyticsWorkspaceId'), '2023-09-01').primarySharedKey]"
+                          }
+                        }
+                      }
+                    }
+                  ],
+                  "outputs": {
+                    "environmentId": {
+                      "type": "string",
+                      "value": "[resourceId('Microsoft.App/managedEnvironments', parameters('environmentName'))]"
+                    }
+                  }
+                }
+              },
+              "dependsOn": [
+                "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'log-analytics')]",
+                "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Resources/deployments",
+              "apiVersion": "2025-04-01",
+              "name": "job-schedule",
+              "resourceGroup": "[parameters('resourceGroupName')]",
+              "properties": {
+                "expressionEvaluationOptions": {
+                  "scope": "inner"
+                },
+                "mode": "Incremental",
+                "parameters": {
+                  "location": {
+                    "value": "[parameters('location')]"
+                  },
+                  "environmentId": {
+                    "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'container-apps-env'), '2025-04-01').outputs.environmentId.value]"
+                  },
+                  "identityId": {
+                    "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'identity'), '2025-04-01').outputs.identityId.value]"
+                  },
+                  "identityClientId": {
+                    "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'identity'), '2025-04-01').outputs.identityClientId.value]"
+                  },
+                  "containerImage": {
+                    "value": "[parameters('containerImage')]"
+                  },
+                  "storageAccountName": {
+                    "value": "[parameters('storageAccountName')]"
+                  },
+                  "subscriptionIdsCsv": {
+                    "value": "[variables('subscriptionIdsCsv')]"
+                  },
+                  "scheduleExpression": {
+                    "value": "[parameters('scheduleExpression')]"
+                  },
+                  "jobCpu": {
+                    "value": "[parameters('jobCpu')]"
+                  },
+                  "jobMemory": {
+                    "value": "[parameters('jobMemory')]"
+                  },
+                  "tags": {
+                    "value": "[parameters('tags')]"
+                  }
+                },
+                "template": {
+                  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                  "contentVersion": "1.0.0.0",
+                  "metadata": {
+                    "_generator": {
+                      "name": "bicep",
+                      "version": "0.42.1.51946",
+                      "templateHash": "12169015474928111888"
+                    }
+                  },
+                  "parameters": {
+                    "location": {
+                      "type": "string"
+                    },
+                    "environmentId": {
+                      "type": "string"
+                    },
+                    "identityId": {
+                      "type": "string"
+                    },
+                    "identityClientId": {
+                      "type": "string"
+                    },
+                    "containerImage": {
+                      "type": "string"
+                    },
+                    "storageAccountName": {
+                      "type": "string"
+                    },
+                    "subscriptionIdsCsv": {
+                      "type": "string"
+                    },
+                    "scheduleExpression": {
+                      "type": "string",
+                      "defaultValue": "*/15 * * * *"
+                    },
+                    "jobCpu": {
+                      "type": "string",
+                      "defaultValue": "0.25"
+                    },
+                    "jobMemory": {
+                      "type": "string",
+                      "defaultValue": "0.5Gi"
+                    },
+                    "tags": {
+                      "type": "object",
+                      "defaultValue": {}
+                    }
+                  },
+                  "variables": {
+                    "outputHost": "[format('{0}.blob.{1}', parameters('storageAccountName'), environment().suffixes.storage)]"
+                  },
+                  "resources": [
+                    {
+                      "type": "Microsoft.App/jobs",
+                      "apiVersion": "2024-03-01",
+                      "name": "custodian-schedule",
+                      "location": "[parameters('location')]",
+                      "tags": "[parameters('tags')]",
+                      "identity": {
+                        "type": "UserAssigned",
+                        "userAssignedIdentities": {
+                          "[format('{0}', parameters('identityId'))]": {}
+                        }
+                      },
+                      "properties": {
+                        "environmentId": "[parameters('environmentId')]",
+                        "configuration": {
+                          "triggerType": "Schedule",
+                          "scheduleTriggerConfig": {
+                            "cronExpression": "[parameters('scheduleExpression')]",
+                            "parallelism": 1,
+                            "replicaCompletionCount": 1
+                          },
+                          "replicaTimeout": 1800,
+                          "replicaRetryLimit": 1
+                        },
+                        "template": {
+                          "containers": [
+                            {
+                              "name": "custodian",
+                              "image": "[parameters('containerImage')]",
+                              "resources": {
+                                "cpu": "[json(parameters('jobCpu'))]",
+                                "memory": "[parameters('jobMemory')]"
+                              },
+                              "env": [
+                                {
+                                  "name": "C7N_ACA_MODE",
+                                  "value": "schedule"
+                                },
+                                {
+                                  "name": "C7N_ACA_STORAGE_ACCOUNT",
+                                  "value": "[parameters('storageAccountName')]"
+                                },
+                                {
+                                  "name": "C7N_ACA_SUBSCRIPTION_IDS",
+                                  "value": "[parameters('subscriptionIdsCsv')]"
+                                },
+                                {
+                                  "name": "C7N_ACA_OUTPUT_DIR",
+                                  "value": "[format('azure://{0}/output', variables('outputHost'))]"
+                                },
+                                {
+                                  "name": "AZURE_CLIENT_ID",
+                                  "value": "[parameters('identityClientId')]"
+                                },
+                                {
+                                  "name": "AZURE_USE_MSI",
+                                  "value": "true"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  ],
+                  "outputs": {
+                    "jobId": {
+                      "type": "string",
+                      "value": "[resourceId('Microsoft.App/jobs', 'custodian-schedule')]"
+                    }
+                  }
+                }
+              },
+              "dependsOn": [
+                "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'container-apps-env')]",
+                "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'identity')]",
+                "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Resources/deployments",
+              "apiVersion": "2025-04-01",
+              "name": "job-event",
+              "resourceGroup": "[parameters('resourceGroupName')]",
+              "properties": {
+                "expressionEvaluationOptions": {
+                  "scope": "inner"
+                },
+                "mode": "Incremental",
+                "parameters": {
+                  "location": {
+                    "value": "[parameters('location')]"
+                  },
+                  "environmentId": {
+                    "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'container-apps-env'), '2025-04-01').outputs.environmentId.value]"
+                  },
+                  "identityId": {
+                    "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'identity'), '2025-04-01').outputs.identityId.value]"
+                  },
+                  "identityClientId": {
+                    "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'identity'), '2025-04-01').outputs.identityClientId.value]"
+                  },
+                  "containerImage": {
+                    "value": "[parameters('containerImage')]"
+                  },
+                  "storageAccountName": {
+                    "value": "[parameters('storageAccountName')]"
+                  },
+                  "queueName": {
+                    "value": "[parameters('queueName')]"
+                  },
+                  "subscriptionIdsCsv": {
+                    "value": "[variables('subscriptionIdsCsv')]"
+                  },
+                  "maxExecutions": {
+                    "value": "[parameters('maxExecutions')]"
+                  },
+                  "jobCpu": {
+                    "value": "[parameters('jobCpu')]"
+                  },
+                  "jobMemory": {
+                    "value": "[parameters('jobMemory')]"
+                  },
+                  "tags": {
+                    "value": "[parameters('tags')]"
+                  }
+                },
+                "template": {
+                  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                  "contentVersion": "1.0.0.0",
+                  "metadata": {
+                    "_generator": {
+                      "name": "bicep",
+                      "version": "0.42.1.51946",
+                      "templateHash": "13191499533136745064"
+                    }
+                  },
+                  "parameters": {
+                    "location": {
+                      "type": "string"
+                    },
+                    "environmentId": {
+                      "type": "string"
+                    },
+                    "identityId": {
+                      "type": "string"
+                    },
+                    "identityClientId": {
+                      "type": "string"
+                    },
+                    "containerImage": {
+                      "type": "string"
+                    },
+                    "storageAccountName": {
+                      "type": "string"
+                    },
+                    "queueName": {
+                      "type": "string",
+                      "defaultValue": "custodian-events"
+                    },
+                    "subscriptionIdsCsv": {
+                      "type": "string"
+                    },
+                    "maxExecutions": {
+                      "type": "int",
+                      "defaultValue": 10
+                    },
+                    "jobCpu": {
+                      "type": "string",
+                      "defaultValue": "0.25"
+                    },
+                    "jobMemory": {
+                      "type": "string",
+                      "defaultValue": "0.5Gi"
+                    },
+                    "tags": {
+                      "type": "object",
+                      "defaultValue": {}
+                    }
+                  },
+                  "variables": {
+                    "outputHost": "[format('{0}.blob.{1}', parameters('storageAccountName'), environment().suffixes.storage)]"
+                  },
+                  "resources": [
+                    {
+                      "type": "Microsoft.App/jobs",
+                      "apiVersion": "2024-10-02-preview",
+                      "name": "custodian-event",
+                      "location": "[parameters('location')]",
+                      "tags": "[parameters('tags')]",
+                      "identity": {
+                        "type": "UserAssigned",
+                        "userAssignedIdentities": {
+                          "[format('{0}', parameters('identityId'))]": {}
+                        }
+                      },
+                      "properties": {
+                        "environmentId": "[parameters('environmentId')]",
+                        "configuration": {
+                          "triggerType": "Event",
+                          "eventTriggerConfig": {
+                            "parallelism": 1,
+                            "replicaCompletionCount": 1,
+                            "scale": {
+                              "minExecutions": 0,
+                              "maxExecutions": "[parameters('maxExecutions')]",
+                              "pollingInterval": 30,
+                              "rules": [
+                                {
+                                  "name": "queue-rule",
+                                  "type": "azure-queue",
+                                  "identity": "[parameters('identityId')]",
+                                  "metadata": {
+                                    "accountName": "[parameters('storageAccountName')]",
+                                    "queueName": "[parameters('queueName')]",
+                                    "queueLength": "1",
+                                    "cloud": "AzurePublicCloud"
+                                  }
+                                }
+                              ]
+                            }
+                          },
+                          "replicaTimeout": 1800,
+                          "replicaRetryLimit": 1
+                        },
+                        "template": {
+                          "containers": [
+                            {
+                              "name": "custodian",
+                              "image": "[parameters('containerImage')]",
+                              "resources": {
+                                "cpu": "[json(parameters('jobCpu'))]",
+                                "memory": "[parameters('jobMemory')]"
+                              },
+                              "env": [
+                                {
+                                  "name": "C7N_ACA_MODE",
+                                  "value": "event"
+                                },
+                                {
+                                  "name": "C7N_ACA_STORAGE_ACCOUNT",
+                                  "value": "[parameters('storageAccountName')]"
+                                },
+                                {
+                                  "name": "C7N_ACA_QUEUE_NAME",
+                                  "value": "[parameters('queueName')]"
+                                },
+                                {
+                                  "name": "C7N_ACA_SUBSCRIPTION_IDS",
+                                  "value": "[parameters('subscriptionIdsCsv')]"
+                                },
+                                {
+                                  "name": "C7N_ACA_OUTPUT_DIR",
+                                  "value": "[format('azure://{0}/output', variables('outputHost'))]"
+                                },
+                                {
+                                  "name": "AZURE_CLIENT_ID",
+                                  "value": "[parameters('identityClientId')]"
+                                },
+                                {
+                                  "name": "AZURE_USE_MSI",
+                                  "value": "true"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  ],
+                  "outputs": {
+                    "jobId": {
+                      "type": "string",
+                      "value": "[resourceId('Microsoft.App/jobs', 'custodian-event')]"
+                    }
+                  }
+                }
+              },
+              "dependsOn": [
+                "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'container-apps-env')]",
+                "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'identity')]",
+                "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Resources/deployments",
+              "apiVersion": "2025-04-01",
+              "name": "alerts",
+              "resourceGroup": "[parameters('resourceGroupName')]",
+              "properties": {
+                "expressionEvaluationOptions": {
+                  "scope": "inner"
+                },
+                "mode": "Incremental",
+                "parameters": {
+                  "location": {
+                    "value": "[parameters('location')]"
+                  },
+                  "logAnalyticsWorkspaceId": {
+                    "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'log-analytics'), '2025-04-01').outputs.workspaceId.value]"
+                  },
+                  "storageAccountName": {
+                    "value": "[parameters('storageAccountName')]"
+                  },
+                  "queueDepthThreshold": {
+                    "value": "[parameters('alertQueueDepthThreshold')]"
+                  },
+                  "jobFailureThreshold": {
+                    "value": "[parameters('alertJobFailureThreshold')]"
+                  },
+                  "enableAlerts": {
+                    "value": "[parameters('enableAlerts')]"
+                  },
+                  "tags": {
+                    "value": "[parameters('tags')]"
+                  }
+                },
+                "template": {
+                  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                  "contentVersion": "1.0.0.0",
+                  "metadata": {
+                    "_generator": {
+                      "name": "bicep",
+                      "version": "0.42.1.51946",
+                      "templateHash": "17975378839384023658"
+                    }
+                  },
+                  "parameters": {
+                    "location": {
+                      "type": "string"
+                    },
+                    "logAnalyticsWorkspaceId": {
+                      "type": "string"
+                    },
+                    "storageAccountName": {
+                      "type": "string"
+                    },
+                    "tags": {
+                      "type": "object",
+                      "defaultValue": {}
+                    },
+                    "queueDepthThreshold": {
+                      "type": "int",
+                      "defaultValue": 100,
+                      "minValue": 1,
+                      "metadata": {
+                        "description": "Queue depth threshold to trigger alert"
+                      }
+                    },
+                    "jobFailureThreshold": {
+                      "type": "int",
+                      "defaultValue": 3,
+                      "minValue": 1,
+                      "metadata": {
+                        "description": "Job failure count threshold to trigger alert (evaluation window: 5 minutes)"
+                      }
+                    },
+                    "enableAlerts": {
+                      "type": "bool",
+                      "defaultValue": true,
+                      "metadata": {
+                        "description": "Enable alert rules"
+                      }
+                    }
+                  },
+                  "variables": {
+                    "queueServiceResourceId": "[resourceId('Microsoft.Storage/storageAccounts/queueServices', parameters('storageAccountName'), 'default')]"
+                  },
+                  "resources": [
+                    {
+                      "type": "Microsoft.Insights/actionGroups",
+                      "apiVersion": "2023-01-01",
+                      "name": "custodian-alerts-ag",
+                      "location": "global",
+                      "tags": "[parameters('tags')]",
+                      "properties": {
+                        "groupShortName": "c7n-alerts",
+                        "enabled": "[parameters('enableAlerts')]",
+                        "emailReceivers": []
+                      }
+                    },
+                    {
+                      "type": "Microsoft.Insights/scheduledQueryRules",
+                      "apiVersion": "2023-12-01",
+                      "name": "custodian-job-failure",
+                      "location": "[parameters('location')]",
+                      "tags": "[parameters('tags')]",
+                      "properties": {
+                        "displayName": "Custodian Job Execution Failures",
+                        "description": "Alerts when Container Apps Jobs fail repeatedly",
+                        "severity": 2,
+                        "enabled": "[parameters('enableAlerts')]",
+                        "evaluationFrequency": "PT5M",
+                        "windowSize": "PT5M",
+                        "skipQueryValidation": true,
+                        "scopes": [
+                          "[parameters('logAnalyticsWorkspaceId')]"
+                        ],
+                        "criteria": {
+                          "allOf": [
+                            {
+                              "query": "            union isfuzzy=true\n              (ContainerAppSystemLogs_CL\n              | project TimeGenerated, ContainerAppName = tostring(ContainerAppName_s), LogMessage = tostring(Log_s)),\n              (ContainerAppConsoleLogs_CL\n              | project TimeGenerated, ContainerAppName = tostring(ContainerAppName_s), LogMessage = tostring(Log_s)),\n              (datatable(TimeGenerated:datetime, ContainerAppName:string, LogMessage:string)[])\n            | where ContainerAppName startswith \"custodian-\"\n            | where LogMessage contains \"Error\" or LogMessage contains \"Failed\" or LogMessage contains \"Exception\"\n            | summarize FailureCount = count() by bin(TimeGenerated, 5m)\n          ",
+                              "timeAggregation": "Count",
+                              "operator": "GreaterThanOrEqual",
+                              "threshold": "[parameters('jobFailureThreshold')]",
+                              "failingPeriods": {
+                                "numberOfEvaluationPeriods": 1,
+                                "minFailingPeriodsToAlert": 1
+                              }
+                            }
+                          ]
+                        },
+                        "actions": {
+                          "actionGroups": [
+                            "[resourceId('Microsoft.Insights/actionGroups', 'custodian-alerts-ag')]"
+                          ]
+                        }
+                      },
+                      "dependsOn": [
+                        "[resourceId('Microsoft.Insights/actionGroups', 'custodian-alerts-ag')]"
+                      ]
+                    },
+                    {
+                      "type": "Microsoft.Insights/metricAlerts",
+                      "apiVersion": "2018-03-01",
+                      "name": "custodian-queue-depth",
+                      "location": "global",
+                      "tags": "[parameters('tags')]",
+                      "properties": {
+                        "description": "Alerts when the custodian event queue has too many pending messages",
+                        "severity": 3,
+                        "enabled": "[parameters('enableAlerts')]",
+                        "evaluationFrequency": "PT1H",
+                        "windowSize": "PT1H",
+                        "scopes": [
+                          "[variables('queueServiceResourceId')]"
+                        ],
+                        "criteria": {
+                          "odata.type": "Microsoft.Azure.Monitor.SingleResourceMultipleMetricCriteria",
+                          "allOf": [
+                            {
+                              "name": "QueueMessageCount",
+                              "metricName": "QueueMessageCount",
+                              "metricNamespace": "Microsoft.Storage/storageAccounts/queueServices",
+                              "operator": "GreaterThan",
+                              "threshold": "[parameters('queueDepthThreshold')]",
+                              "timeAggregation": "Average",
+                              "criterionType": "StaticThresholdCriterion"
+                            }
+                          ]
+                        },
+                        "actions": [
+                          {
+                            "actionGroupId": "[resourceId('Microsoft.Insights/actionGroups', 'custodian-alerts-ag')]"
+                          }
+                        ]
+                      },
+                      "dependsOn": [
+                        "[resourceId('Microsoft.Insights/actionGroups', 'custodian-alerts-ag')]"
+                      ]
+                    }
+                  ]
+                }
+              },
+              "dependsOn": [
+                "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'log-analytics')]",
+                "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName'))]",
+                "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'storage')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Resources/deployments",
+              "apiVersion": "2025-04-01",
+              "name": "role-assignments-storage",
+              "resourceGroup": "[parameters('resourceGroupName')]",
+              "properties": {
+                "expressionEvaluationOptions": {
+                  "scope": "inner"
+                },
+                "mode": "Incremental",
+                "parameters": {
+                  "identityPrincipalId": {
+                    "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'identity'), '2025-04-01').outputs.identityPrincipalId.value]"
+                  },
+                  "storageAccountName": {
+                    "value": "[parameters('storageAccountName')]"
+                  }
+                },
+                "template": {
+                  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                  "contentVersion": "1.0.0.0",
+                  "metadata": {
+                    "_generator": {
+                      "name": "bicep",
+                      "version": "0.42.1.51946",
+                      "templateHash": "14870740203310167029"
+                    }
+                  },
+                  "parameters": {
+                    "identityPrincipalId": {
+                      "type": "string"
+                    },
+                    "storageAccountName": {
+                      "type": "string"
+                    }
+                  },
+                  "variables": {
+                    "storageBlobDataContributorRoleId": "ba92f5b4-2d11-453d-a403-e96b0029c9fe",
+                    "storageQueueDataContributorRoleId": "974c5e8b-45b9-4653-ba55-5f855dd0fb88"
+                  },
+                  "resources": [
+                    {
+                      "type": "Microsoft.Authorization/roleAssignments",
+                      "apiVersion": "2022-04-01",
+                      "scope": "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]",
+                      "name": "[guid(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), parameters('identityPrincipalId'), variables('storageBlobDataContributorRoleId'))]",
+                      "properties": {
+                        "principalId": "[parameters('identityPrincipalId')]",
+                        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('storageBlobDataContributorRoleId'))]",
+                        "principalType": "ServicePrincipal"
+                      }
+                    },
+                    {
+                      "type": "Microsoft.Authorization/roleAssignments",
+                      "apiVersion": "2022-04-01",
+                      "scope": "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]",
+                      "name": "[guid(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), parameters('identityPrincipalId'), variables('storageQueueDataContributorRoleId'))]",
+                      "properties": {
+                        "principalId": "[parameters('identityPrincipalId')]",
+                        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('storageQueueDataContributorRoleId'))]",
+                        "principalType": "ServicePrincipal"
+                      }
+                    }
+                  ]
+                }
+              },
+              "dependsOn": [
+                "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'identity')]",
+                "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName'))]",
+                "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'storage')]"
+              ]
+            },
+            {
+              "copy": {
+                "name": "subscriptionRoleAssignments",
+                "count": "[length(parameters('targetSubscriptionIds'))]"
+              },
+              "condition": "[equals(parameters('targetRoleAssignmentScope'), 'subscription')]",
+              "type": "Microsoft.Resources/deployments",
+              "apiVersion": "2025-04-01",
+              "name": "[format('role-assignments-sub-{0}', copyIndex())]",
+              "subscriptionId": "[parameters('targetSubscriptionIds')[copyIndex()]]",
+              "location": "[deployment().location]",
+              "properties": {
+                "expressionEvaluationOptions": {
+                  "scope": "inner"
+                },
+                "mode": "Incremental",
+                "parameters": {
+                  "identityPrincipalId": {
+                    "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'identity'), '2025-04-01').outputs.identityPrincipalId.value]"
+                  },
+                  "roleDefinitionId": "[if(parameters('createAndAssignCustomRole'), createObject('value', reference(subscriptionResourceId('Microsoft.Resources/deployments', 'custom-role-definition'), '2025-04-01').outputs.roleDefinitionId.value), createObject('value', ''))]",
+                  "assignContributorRole": {
+                    "value": "[parameters('assignContributorRole')]"
+                  }
+                },
+                "template": {
+                  "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+                  "contentVersion": "1.0.0.0",
+                  "metadata": {
+                    "_generator": {
+                      "name": "bicep",
+                      "version": "0.42.1.51946",
+                      "templateHash": "9044065531180280441"
+                    }
+                  },
+                  "parameters": {
+                    "identityPrincipalId": {
+                      "type": "string"
+                    },
+                    "roleDefinitionId": {
+                      "type": "string",
+                      "defaultValue": ""
+                    },
+                    "assignContributorRole": {
+                      "type": "bool",
+                      "defaultValue": false
+                    }
+                  },
+                  "variables": {
+                    "readerRoleId": "acdd72a7-3385-48ef-bd42-f606fba81ae7",
+                    "contributorRoleId": "b24988ac-6180-42a0-ab88-20f7382dd24c"
+                  },
+                  "resources": [
+                    {
+                      "condition": "[empty(parameters('roleDefinitionId'))]",
+                      "type": "Microsoft.Authorization/roleAssignments",
+                      "apiVersion": "2022-04-01",
+                      "name": "[guid(subscription().id, parameters('identityPrincipalId'), variables('readerRoleId'))]",
+                      "properties": {
+                        "principalId": "[parameters('identityPrincipalId')]",
+                        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('readerRoleId'))]",
+                        "principalType": "ServicePrincipal"
+                      }
+                    },
+                    {
+                      "condition": "[not(empty(parameters('roleDefinitionId')))]",
+                      "type": "Microsoft.Authorization/roleAssignments",
+                      "apiVersion": "2022-04-01",
+                      "name": "[guid(subscription().id, parameters('identityPrincipalId'), parameters('roleDefinitionId'))]",
+                      "properties": {
+                        "principalId": "[parameters('identityPrincipalId')]",
+                        "roleDefinitionId": "[parameters('roleDefinitionId')]",
+                        "principalType": "ServicePrincipal"
+                      }
+                    },
+                    {
+                      "condition": "[and(empty(parameters('roleDefinitionId')), parameters('assignContributorRole'))]",
+                      "type": "Microsoft.Authorization/roleAssignments",
+                      "apiVersion": "2022-04-01",
+                      "name": "[guid(subscription().id, parameters('identityPrincipalId'), variables('contributorRoleId'))]",
+                      "properties": {
+                        "principalId": "[parameters('identityPrincipalId')]",
+                        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('contributorRoleId'))]",
+                        "principalType": "ServicePrincipal"
+                      }
+                    }
+                  ]
+                }
+              },
+              "dependsOn": [
+                "[subscriptionResourceId('Microsoft.Resources/deployments', 'custom-role-definition')]",
+                "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'identity')]"
+              ]
+            },
+            {
+              "copy": {
+                "name": "resourceGroupRoleAssignments",
+                "count": "[length(parameters('targetSubscriptionIds'))]"
+              },
+              "condition": "[equals(parameters('targetRoleAssignmentScope'), 'resource-group')]",
+              "type": "Microsoft.Resources/deployments",
+              "apiVersion": "2025-04-01",
+              "name": "[format('role-assignments-rg-{0}', copyIndex())]",
+              "subscriptionId": "[parameters('targetSubscriptionIds')[copyIndex()]]",
+              "resourceGroup": "[parameters('targetResourceGroupName')]",
+              "properties": {
+                "expressionEvaluationOptions": {
+                  "scope": "inner"
+                },
+                "mode": "Incremental",
+                "parameters": {
+                  "identityPrincipalId": {
+                    "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'identity'), '2025-04-01').outputs.identityPrincipalId.value]"
+                  },
+                  "roleDefinitionId": "[if(parameters('createAndAssignCustomRole'), createObject('value', reference(subscriptionResourceId('Microsoft.Resources/deployments', 'custom-role-definition'), '2025-04-01').outputs.roleDefinitionId.value), createObject('value', ''))]",
+                  "assignContributorRole": {
+                    "value": "[parameters('assignContributorRole')]"
+                  }
+                },
+                "template": {
+                  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                  "contentVersion": "1.0.0.0",
+                  "metadata": {
+                    "_generator": {
+                      "name": "bicep",
+                      "version": "0.42.1.51946",
+                      "templateHash": "9154639058947746379"
+                    }
+                  },
+                  "parameters": {
+                    "identityPrincipalId": {
+                      "type": "string"
+                    },
+                    "roleDefinitionId": {
+                      "type": "string",
+                      "defaultValue": ""
+                    },
+                    "assignContributorRole": {
+                      "type": "bool",
+                      "defaultValue": false
+                    }
+                  },
+                  "variables": {
+                    "readerRoleId": "acdd72a7-3385-48ef-bd42-f606fba81ae7",
+                    "contributorRoleId": "b24988ac-6180-42a0-ab88-20f7382dd24c"
+                  },
+                  "resources": [
+                    {
+                      "condition": "[empty(parameters('roleDefinitionId'))]",
+                      "type": "Microsoft.Authorization/roleAssignments",
+                      "apiVersion": "2022-04-01",
+                      "name": "[guid(resourceGroup().id, parameters('identityPrincipalId'), variables('readerRoleId'))]",
+                      "properties": {
+                        "principalId": "[parameters('identityPrincipalId')]",
+                        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('readerRoleId'))]",
+                        "principalType": "ServicePrincipal"
+                      }
+                    },
+                    {
+                      "condition": "[not(empty(parameters('roleDefinitionId')))]",
+                      "type": "Microsoft.Authorization/roleAssignments",
+                      "apiVersion": "2022-04-01",
+                      "name": "[guid(resourceGroup().id, parameters('identityPrincipalId'), parameters('roleDefinitionId'))]",
+                      "properties": {
+                        "principalId": "[parameters('identityPrincipalId')]",
+                        "roleDefinitionId": "[parameters('roleDefinitionId')]",
+                        "principalType": "ServicePrincipal"
+                      }
+                    },
+                    {
+                      "condition": "[and(empty(parameters('roleDefinitionId')), parameters('assignContributorRole'))]",
+                      "type": "Microsoft.Authorization/roleAssignments",
+                      "apiVersion": "2022-04-01",
+                      "name": "[guid(resourceGroup().id, parameters('identityPrincipalId'), variables('contributorRoleId'))]",
+                      "properties": {
+                        "principalId": "[parameters('identityPrincipalId')]",
+                        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('contributorRoleId'))]",
+                        "principalType": "ServicePrincipal"
+                      }
+                    }
+                  ]
+                }
+              },
+              "dependsOn": [
+                "[subscriptionResourceId('Microsoft.Resources/deployments', 'custom-role-definition')]",
+                "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'identity')]"
+              ]
+            },
+            {
+              "copy": {
+                "name": "eventGrid",
+                "count": "[length(parameters('targetSubscriptionIds'))]"
+              },
+              "type": "Microsoft.Resources/deployments",
+              "apiVersion": "2025-04-01",
+              "name": "[format('event-grid-{0}', copyIndex())]",
+              "subscriptionId": "[parameters('targetSubscriptionIds')[copyIndex()]]",
+              "location": "[deployment().location]",
+              "properties": {
+                "expressionEvaluationOptions": {
+                  "scope": "inner"
+                },
+                "mode": "Incremental",
+                "parameters": {
+                  "storageAccountResourceId": {
+                    "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'storage'), '2025-04-01').outputs.storageAccountId.value]"
+                  },
+                  "queueName": {
+                    "value": "[parameters('queueName')]"
+                  },
+                  "eventOperationNames": {
+                    "value": "[variables('effectiveEventOperationNames')]"
+                  },
+                  "eventSubscriptionName": {
+                    "value": "[format('custodian-{0}', parameters('queueName'))]"
+                  }
+                },
+                "template": {
+                  "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+                  "contentVersion": "1.0.0.0",
+                  "metadata": {
+                    "_generator": {
+                      "name": "bicep",
+                      "version": "0.42.1.51946",
+                      "templateHash": "11073593934453606517"
+                    }
+                  },
+                  "parameters": {
+                    "storageAccountResourceId": {
+                      "type": "string"
+                    },
+                    "queueName": {
+                      "type": "string",
+                      "defaultValue": "custodian-events"
+                    },
+                    "eventOperationNames": {
+                      "type": "array",
+                      "defaultValue": []
+                    },
+                    "eventSubscriptionName": {
+                      "type": "string",
+                      "defaultValue": "custodian-events"
+                    },
+                    "deadLetterContainerName": {
+                      "type": "string",
+                      "defaultValue": "event-deadletter",
+                      "metadata": {
+                        "description": "Blob container resource ID for dead-letter destination (storage account resource ID used)"
+                      }
+                    }
+                  },
+                  "resources": [
+                    {
+                      "type": "Microsoft.EventGrid/eventSubscriptions",
+                      "apiVersion": "2022-06-15",
+                      "name": "[parameters('eventSubscriptionName')]",
+                      "properties": {
+                        "destination": {
+                          "endpointType": "StorageQueue",
+                          "properties": {
+                            "resourceId": "[parameters('storageAccountResourceId')]",
+                            "queueName": "[parameters('queueName')]",
+                            "queueMessageTimeToLiveInSeconds": 86400
+                          }
+                        },
+                        "filter": {
+                          "includedEventTypes": [
+                            "Microsoft.Resources.ResourceWriteSuccess"
+                          ],
+                          "advancedFilters": "[if(empty(parameters('eventOperationNames')), createArray(), createArray(createObject('operatorType', 'StringIn', 'key', 'data.operationName', 'values', parameters('eventOperationNames'))))]"
+                        },
+                        "deadLetterDestination": {
+                          "endpointType": "StorageBlob",
+                          "properties": {
+                            "resourceId": "[parameters('storageAccountResourceId')]",
+                            "blobContainerName": "[parameters('deadLetterContainerName')]"
+                          }
+                        },
+                        "retryPolicy": {
+                          "maxDeliveryAttempts": 10,
+                          "eventTimeToLiveInMinutes": 1440
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              "dependsOn": [
+                "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'storage')]"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

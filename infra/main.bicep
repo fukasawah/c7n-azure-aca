@@ -30,6 +30,33 @@ param targetSubscriptionIds array
 @description('Event Grid operation name filter (e.g. ["Microsoft.Compute/virtualMachines/write"])')
 param eventOperationNames array = []
 
+@description('Create a custom role for the managed identity and assign it to the target scopes')
+param createAndAssignCustomRole bool = false
+
+@description('Optional custom role name override. Leave empty to use a deterministic default name.')
+param customRoleName string = ''
+
+@description('Watch virtual machine write events in Event Grid')
+param watchVirtualMachineWriteEvents bool = true
+
+@description('Watch storage account write events in Event Grid')
+param watchStorageAccountWriteEvents bool = false
+
+@description('Watch App Service write events in Event Grid')
+param watchAppServiceWriteEvents bool = false
+
+@description('Watch Azure SQL database write events in Event Grid')
+param watchSqlDatabaseWriteEvents bool = false
+
+@description('Allow resource tag updates through the managed identity custom role')
+param allowTagManagement bool = false
+
+@description('Allow virtual machine power operations through the managed identity custom role')
+param allowVirtualMachinePowerControl bool = false
+
+@description('Allow App Service app setting updates through the managed identity custom role')
+param allowAppServiceAppSettingsManagement bool = false
+
 @description('Assign Contributor role to UAI on target subscriptions (for mutating actions)')
 param assignContributorRole bool = false
 
@@ -75,6 +102,62 @@ param tags object = {}
 
 // Comma-separated subscription IDs for container env var
 var subscriptionIdsCsv = join(targetSubscriptionIds, ',')
+var toggledEventOperationNames = union(
+  watchVirtualMachineWriteEvents ? ['Microsoft.Compute/virtualMachines/write'] : [],
+  watchStorageAccountWriteEvents ? ['Microsoft.Storage/storageAccounts/write'] : [],
+  watchAppServiceWriteEvents ? ['Microsoft.Web/sites/write'] : [],
+  watchSqlDatabaseWriteEvents ? ['Microsoft.Sql/servers/databases/write'] : []
+)
+var effectiveEventOperationNames = !empty(eventOperationNames) ? eventOperationNames : toggledEventOperationNames
+var subscriptionCustomRoleAssignableScopes = [for subId in targetSubscriptionIds: '/subscriptions/${subId}']
+var resourceGroupCustomRoleAssignableScopes = [for subId in targetSubscriptionIds: '/subscriptions/${subId}/resourceGroups/${targetResourceGroupName}']
+var customRoleAssignableScopes = targetRoleAssignmentScope == 'subscription'
+  ? subscriptionCustomRoleAssignableScopes
+  : resourceGroupCustomRoleAssignableScopes
+var effectiveCustomRoleName = !empty(customRoleName)
+  ? customRoleName
+  : '${resourceGroupName}-managed-identity-role'
+var customRoleActions = union(
+  [
+    'Microsoft.Resources/subscriptions/read'
+    'Microsoft.Resources/subscriptions/resourceGroups/read'
+  ],
+  allowTagManagement
+    ? [
+        'Microsoft.Resources/subscriptions/resources/read'
+        'Microsoft.Resources/subscriptions/resourceGroups/resources/read'
+        'Microsoft.Resources/tags/read'
+        'Microsoft.Resources/tags/write'
+      ]
+    : [],
+  allowVirtualMachinePowerControl
+    ? [
+        'Microsoft.Compute/virtualMachines/read'
+        'Microsoft.Compute/virtualMachines/start/action'
+        'Microsoft.Compute/virtualMachines/restart/action'
+        'Microsoft.Compute/virtualMachines/powerOff/action'
+        'Microsoft.Compute/virtualMachines/deallocate/action'
+      ]
+    : [],
+  allowAppServiceAppSettingsManagement
+    ? [
+        'Microsoft.Web/sites/read'
+        'Microsoft.Web/sites/config/read'
+        'microsoft.web/sites/config/web/appsettings/write'
+        'microsoft.web/sites/config/web/appsettings/delete'
+      ]
+    : []
+)
+
+module customRole 'modules/custom-role-definition.bicep' = if (createAndAssignCustomRole) {
+  name: 'custom-role-definition'
+  params: {
+    roleName: effectiveCustomRoleName
+    roleDescription: 'Managed identity role for ${resourceGroupName}. Generated from template toggle parameters.'
+    assignableScopes: customRoleAssignableScopes
+    actions: customRoleActions
+  }
+}
 
 // Resource Group
 resource rg 'Microsoft.Resources/resourceGroups@2024-03-01' = {
@@ -203,6 +286,7 @@ module subscriptionRoleAssignments 'modules/role-assignment-subscription.bicep' 
     name: 'role-assignments-sub-${i}'
     params: {
       identityPrincipalId: identity.outputs.identityPrincipalId
+      roleDefinitionId: createAndAssignCustomRole ? customRole!.outputs.roleDefinitionId : ''
       assignContributorRole: assignContributorRole
     }
   }
@@ -215,6 +299,7 @@ module resourceGroupRoleAssignments 'modules/role-assignment-resource-group.bice
     name: 'role-assignments-rg-${i}'
     params: {
       identityPrincipalId: identity.outputs.identityPrincipalId
+      roleDefinitionId: createAndAssignCustomRole ? customRole!.outputs.roleDefinitionId : ''
       assignContributorRole: assignContributorRole
     }
   }
@@ -228,7 +313,7 @@ module eventGrid 'modules/event-grid.bicep' = [
     params: {
       storageAccountResourceId: storage.outputs.storageAccountId
       queueName: queueName
-      eventOperationNames: eventOperationNames
+      eventOperationNames: effectiveEventOperationNames
       eventSubscriptionName: 'custodian-${queueName}'
     }
   }
