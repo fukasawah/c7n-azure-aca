@@ -15,10 +15,10 @@ c7n-aca = "c7n_azure_container_apps.handler:main"
 
 [dependency-groups]
 dev = [
-    "pytest>=8.0",
+    "pytest>=9.0.3",
     "pytest-mock>=3.0",
     "pytest-cov>=5.0",
-    "ruff>=0.4",
+    "ruff>=0.15.10",
 ]
 
 [build-system]

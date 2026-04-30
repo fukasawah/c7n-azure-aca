@@ -1,5 +1,5 @@
 # --- Stage 1: Build ---
-FROM python:3.11-slim AS builder
+FROM python:3.14-slim AS builder
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 WORKDIR /app
 COPY pyproject.toml uv.lock ./
@@ -7,7 +7,7 @@ COPY src/ src/
 RUN uv sync --frozen --no-dev
 
 # --- Stage 2: Runtime ---
-FROM python:3.11-slim
+FROM python:3.14-slim
 RUN groupadd -r custodian && useradd -r -g custodian custodian
 WORKDIR /app
 COPY --from=builder /app/.venv /app/.venv
