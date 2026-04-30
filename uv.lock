@@ -1272,7 +1272,7 @@ wheels = [
 ]
 
 [[package]]
-name = "c7n-azure-container-apps"
+name = "c7n-azure-aca"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

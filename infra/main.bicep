@@ -19,7 +19,7 @@ param storageAccountName string
 param identityName string = 'custodian-identity'
 
 @description('Container image reference')
-param containerImage string = 'ghcr.io/fukasawah/c7n-azure-container-apps:latest'
+param containerImage string = 'ghcr.io/fukasawah/c7n-azure-aca:latest'
 
 @description('Cron expression for scheduled policy execution')
 param scheduleExpression string = '*/15 * * * *'

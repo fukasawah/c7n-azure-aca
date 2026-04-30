@@ -26,7 +26,7 @@ az deployment sub create \
     storageAccountName="$STORAGE_ACCOUNT" \
     location="$LOCATION" \
     targetSubscriptionIds="[\"$TEST_SUBSCRIPTION_ID\"]" \
-    containerImage="ghcr.io/yourorg/c7n-azure-container-apps:latest"
+    containerImage="ghcr.io/fukasawah/c7n-azure-aca:latest"
 
 # Save state for run-tests.sh and teardown.sh
 cat > tests/integration/.test-env <<EOF

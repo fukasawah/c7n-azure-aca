@@ -10,7 +10,7 @@ permissions:
   packages: write
 
 env:
-  IMAGE_NAME: c7n-azure-container-apps
+  IMAGE_NAME: c7n-azure-aca
 
 jobs:
   build-and-push:
