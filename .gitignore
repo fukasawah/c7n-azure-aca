@@ -1,0 +1,10 @@
+/tmp
+__pycache__/
+*.pyc
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+.venv/
+tests/integration/.test-env
+.coverage

@@ -1,0 +1,11 @@
+.git/
+tmp/
+tests/
+.github/
+.vscode/
+.devcontainer/
+*.md
+infra/
+__pycache__/
+*.pyc
+.ruff_cache/

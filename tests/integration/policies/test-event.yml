@@ -1,0 +1,12 @@
+policies:
+  - name: test-vm-creation
+    resource: azure.vm
+    mode:
+      type: container-event
+      events:
+        - resourceProvider: Microsoft.Compute/virtualMachines
+          event: write
+    filters:
+      - type: value
+        key: tags.Owner
+        value: absent

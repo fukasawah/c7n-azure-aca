@@ -1,0 +1,13 @@
+policies:
+  - name: test-vm-tag-compliance
+    resource: azure.vm
+    mode:
+      type: container-periodic
+    filters:
+      - type: value
+        key: tags.Environment
+        value: absent
+    actions:
+      - type: tag
+        tag: Environment
+        value: test

@@ -1,0 +1,42 @@
+version: 2
+updates:
+  # GitHub Actions — keep action SHAs up to date
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "ci"
+
+  # Python (uv/pip) — keep Python dependencies up to date
+  - package-ecosystem: "uv"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    cooldown:
+      default-days: 14
+    commit-message:
+      prefix: "deps"
+    groups:
+      c7n:
+        patterns:
+          - "c7n"
+          - "c7n-azure"
+      dev:
+        patterns:
+          - "pytest*"
+          - "ruff"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Docker — keep base image up to date
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "docker"
