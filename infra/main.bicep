@@ -33,6 +33,16 @@ param eventOperationNames array = []
 @description('Assign Contributor role to UAI on target subscriptions (for mutating actions)')
 param assignContributorRole bool = false
 
+@description('Scope used for managed identity RBAC on target resources')
+@allowed([
+  'subscription'
+  'resource-group'
+])
+param targetRoleAssignmentScope string = 'subscription'
+
+@description('Target resource group name for managed identity RBAC when using resource-group scope')
+param targetResourceGroupName string = ''
+
 @description('Storage Queue name for events')
 param queueName string = 'custodian-events'
 
@@ -172,7 +182,7 @@ module alerts 'modules/alerts.bicep' = {
     enableAlerts: enableAlerts
     tags: tags
   }
-  dependsOn: [storage, logAnalytics]
+  dependsOn: [storage]
 }
 
 // RBAC — storage access (resource-group scoped)
@@ -188,9 +198,21 @@ module storageRoleAssignments 'modules/role-assignments.bicep' = {
 
 // RBAC — Reader/Contributor on each target subscription
 module subscriptionRoleAssignments 'modules/role-assignment-subscription.bicep' = [
-  for (subId, i) in targetSubscriptionIds: {
+  for (subId, i) in targetSubscriptionIds: if (targetRoleAssignmentScope == 'subscription') {
     scope: subscription(subId)
     name: 'role-assignments-sub-${i}'
+    params: {
+      identityPrincipalId: identity.outputs.identityPrincipalId
+      assignContributorRole: assignContributorRole
+    }
+  }
+]
+
+// RBAC — Reader/Contributor on each target resource group
+module resourceGroupRoleAssignments 'modules/role-assignment-resource-group.bicep' = [
+  for (subId, i) in targetSubscriptionIds: if (targetRoleAssignmentScope == 'resource-group') {
+    scope: resourceGroup(subId, targetResourceGroupName)
+    name: 'role-assignments-rg-${i}'
     params: {
       identityPrincipalId: identity.outputs.identityPrincipalId
       assignContributorRole: assignContributorRole

@@ -12,6 +12,8 @@ param jobCpu string = '0.25'
 param jobMemory string = '0.5Gi'
 param tags object = {}
 
+var outputHost = '${storageAccountName}.blob.${environment().suffixes.storage}'
+
 resource job 'Microsoft.App/jobs@2024-03-01' = {
   name: 'custodian-schedule'
   location: location
@@ -47,8 +49,9 @@ resource job 'Microsoft.App/jobs@2024-03-01' = {
             { name: 'C7N_ACA_MODE', value: 'schedule' }
             { name: 'C7N_ACA_STORAGE_ACCOUNT', value: storageAccountName }
             { name: 'C7N_ACA_SUBSCRIPTION_IDS', value: subscriptionIdsCsv }
-            { name: 'C7N_ACA_OUTPUT_DIR', value: 'azure://${storageAccountName}/output' }
+            { name: 'C7N_ACA_OUTPUT_DIR', value: 'azure://${outputHost}/output' }
             { name: 'AZURE_CLIENT_ID', value: identityClientId }
+            { name: 'AZURE_USE_MSI', value: 'true' }
           ]
         }
       ]

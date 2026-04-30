@@ -13,7 +13,9 @@ param jobCpu string = '0.25'
 param jobMemory string = '0.5Gi'
 param tags object = {}
 
-resource job 'Microsoft.App/jobs@2024-03-01' = {
+var outputHost = '${storageAccountName}.blob.${environment().suffixes.storage}'
+
+resource job 'Microsoft.App/jobs@2024-10-02-preview' = {
   name: 'custodian-event'
   location: location
   tags: tags
@@ -66,8 +68,9 @@ resource job 'Microsoft.App/jobs@2024-03-01' = {
             { name: 'C7N_ACA_STORAGE_ACCOUNT', value: storageAccountName }
             { name: 'C7N_ACA_QUEUE_NAME', value: queueName }
             { name: 'C7N_ACA_SUBSCRIPTION_IDS', value: subscriptionIdsCsv }
-            { name: 'C7N_ACA_OUTPUT_DIR', value: 'azure://${storageAccountName}/output' }
+            { name: 'C7N_ACA_OUTPUT_DIR', value: 'azure://${outputHost}/output' }
             { name: 'AZURE_CLIENT_ID', value: identityClientId }
+            { name: 'AZURE_USE_MSI', value: 'true' }
           ]
         }
       ]

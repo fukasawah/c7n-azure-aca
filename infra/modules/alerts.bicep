@@ -5,6 +5,8 @@ param logAnalyticsWorkspaceId string
 param storageAccountName string
 param tags object = {}
 
+var queueServiceResourceId = resourceId('Microsoft.Storage/storageAccounts/queueServices', storageAccountName, 'default')
+
 @description('Queue depth threshold to trigger alert')
 @minValue(1)
 param queueDepthThreshold int = 100
@@ -40,6 +42,7 @@ resource jobFailureAlert 'Microsoft.Insights/scheduledQueryRules@2023-12-01' = {
     enabled: enableAlerts
     evaluationFrequency: 'PT5M'
     windowSize: 'PT5M'
+    skipQueryValidation: true
     scopes: [
       logAnalyticsWorkspaceId
     ]
@@ -47,9 +50,14 @@ resource jobFailureAlert 'Microsoft.Insights/scheduledQueryRules@2023-12-01' = {
       allOf: [
         {
           query: '''
-            ContainerAppSystemLogs_CL
-            | where ContainerAppName_s startswith "custodian-"
-            | where Log_s contains "Error" or Log_s contains "Failed"
+            union isfuzzy=true
+              (ContainerAppSystemLogs_CL
+              | project TimeGenerated, ContainerAppName = tostring(ContainerAppName_s), LogMessage = tostring(Log_s)),
+              (ContainerAppConsoleLogs_CL
+              | project TimeGenerated, ContainerAppName = tostring(ContainerAppName_s), LogMessage = tostring(Log_s)),
+              (datatable(TimeGenerated:datetime, ContainerAppName:string, LogMessage:string)[])
+            | where ContainerAppName startswith "custodian-"
+            | where LogMessage contains "Error" or LogMessage contains "Failed" or LogMessage contains "Exception"
             | summarize FailureCount = count() by bin(TimeGenerated, 5m)
           '''
           timeAggregation: 'Count'
@@ -79,10 +87,10 @@ resource queueDepthAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
     description: 'Alerts when the custodian event queue has too many pending messages'
     severity: 3
     enabled: enableAlerts
-    evaluationFrequency: 'PT5M'
-    windowSize: 'PT15M'
+    evaluationFrequency: 'PT1H'
+    windowSize: 'PT1H'
     scopes: [
-      resourceId('Microsoft.Storage/storageAccounts', storageAccountName)
+      queueServiceResourceId
     ]
     criteria: {
       'odata.type': 'Microsoft.Azure.Monitor.SingleResourceMultipleMetricCriteria'

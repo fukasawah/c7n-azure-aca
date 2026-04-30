@@ -9,13 +9,17 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+ENV_FILE="$REPO_ROOT/tests/integration/.test-env"
 
-if [[ ! -f tests/integration/.test-env ]]; then
+if [[ ! -f "$ENV_FILE" ]]; then
   echo "ERROR: Run setup.sh first" >&2
   exit 1
 fi
 
-source tests/integration/.test-env
+source "$ENV_FILE"
+
+BLOB_ENDPOINT="https://${STORAGE_ACCOUNT}.blob.core.windows.net"
+QUEUE_ENDPOINT="https://${STORAGE_ACCOUNT}.queue.core.windows.net"
 
 FAILURES=0
 TESTS_RUN=0
@@ -64,9 +68,9 @@ echo "Test VM created: $TEST_VM_NAME"
 echo ""
 echo "=== Upload test policies ==="
 az storage blob upload-batch \
-  --source tests/integration/policies/ \
+  --source "$REPO_ROOT/tests/integration/policies/" \
   --destination policies \
-  --account-name "$STORAGE_ACCOUNT" \
+  --blob-endpoint "$BLOB_ENDPOINT" \
   --auth-mode login \
   --overwrite \
   --output none
@@ -74,7 +78,7 @@ az storage blob upload-batch \
 # Verify policies were uploaded
 POLICY_COUNT=$(az storage blob list \
   --container-name policies \
-  --account-name "$STORAGE_ACCOUNT" \
+  --blob-endpoint "$BLOB_ENDPOINT" \
   --auth-mode login \
   --query "length([?ends_with(name, '.yml') || ends_with(name, '.yaml')])" -o tsv)
 
@@ -130,7 +134,7 @@ fi
 # 3b. Output blobs exist for the periodic policy
 PERIODIC_OUTPUT_BLOBS=$(az storage blob list \
   --container-name output \
-  --account-name "$STORAGE_ACCOUNT" \
+  --blob-endpoint "$BLOB_ENDPOINT" \
   --auth-mode login \
   --query "[?contains(name, 'test-vm-tag-compliance')].name" -o tsv)
 
@@ -140,25 +144,25 @@ else
   fail "No output blobs found for test-vm-tag-compliance policy"
 fi
 
-# 3c. Download resources.json and verify it contains resource data
+# 3c. Download resources.json.gz and verify it contains resource data
 RESOURCES_BLOB=$(az storage blob list \
   --container-name output \
-  --account-name "$STORAGE_ACCOUNT" \
+  --blob-endpoint "$BLOB_ENDPOINT" \
   --auth-mode login \
-  --query "[?contains(name, 'test-vm-tag-compliance') && contains(name, 'resources.json')].name | [0]" -o tsv)
+  --query "[?contains(name, 'test-vm-tag-compliance') && contains(name, 'resources.json.gz')].name | [0]" -o tsv)
 
 if [[ -n "$RESOURCES_BLOB" ]]; then
   TMPFILE=$(mktemp)
   az storage blob download \
     --container-name output \
-    --account-name "$STORAGE_ACCOUNT" \
+    --blob-endpoint "$BLOB_ENDPOINT" \
     --name "$RESOURCES_BLOB" \
     --file "$TMPFILE" \
     --auth-mode login \
     --output none
 
-  # Verify it's valid JSON array
-  if python3 -c "import json,sys; data=json.load(open(sys.argv[1])); assert isinstance(data, list)" "$TMPFILE" 2>/dev/null; then
+  # Verify it's a valid gzipped JSON array.
+  if python3 -c "import gzip,json,sys; data=json.load(gzip.open(sys.argv[1], 'rt', encoding='utf-8')); assert isinstance(data, list)" "$TMPFILE" 2>/dev/null; then
     pass "resources.json is valid JSON array"
   else
     fail "resources.json is not a valid JSON array"
@@ -166,8 +170,8 @@ if [[ -n "$RESOURCES_BLOB" ]]; then
 
   # Verify the test VM appears in resources (it has no Environment tag, so it should match)
   if python3 -c "
-import json, sys
-data = json.load(open(sys.argv[1]))
+import gzip, json, sys
+data = json.load(gzip.open(sys.argv[1], 'rt', encoding='utf-8'))
 vm_names = [r.get('name', '') for r in data]
 assert sys.argv[2] in vm_names, f'{sys.argv[2]} not found in {vm_names}'
 " "$TMPFILE" "$TEST_VM_NAME" 2>/dev/null; then
@@ -178,7 +182,7 @@ assert sys.argv[2] in vm_names, f'{sys.argv[2]} not found in {vm_names}'
 
   rm -f "$TMPFILE"
 else
-  fail "resources.json blob not found for test-vm-tag-compliance"
+  fail "resources.json.gz blob not found for test-vm-tag-compliance"
 fi
 
 # 3d. Verify the policy action took effect — Environment tag should be set to "test"
@@ -277,7 +281,7 @@ fi
 # 4c. Check event job logs for processed message
 EVENT_OUTPUT_BLOBS=$(az storage blob list \
   --container-name output \
-  --account-name "$STORAGE_ACCOUNT" \
+  --blob-endpoint "$BLOB_ENDPOINT" \
   --auth-mode login \
   --query "[?contains(name, 'test-vm-creation')].name" -o tsv)
 
@@ -292,7 +296,7 @@ fi
 # 4d. Verify queue was drained (messages processed)
 QUEUE_LENGTH=$(az storage message peek \
   --queue-name custodian-events \
-  --account-name "$STORAGE_ACCOUNT" \
+  --queue-endpoint "$QUEUE_ENDPOINT" \
   --auth-mode login \
   --num-messages 32 \
   --query "length(@)" -o tsv 2>/dev/null || echo "unknown")
