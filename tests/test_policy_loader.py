@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import yaml
 
-from c7n_azure_container_apps.policy_loader import load_policies_from_blob
+from c7n_azure_aca.policy_loader import load_policies_from_blob
 
 
 class FakeBlob:
@@ -45,9 +45,9 @@ def _make_blob_name_mock(name):
     return m
 
 
-@patch("c7n_azure_container_apps.policy_loader.Azure")
-@patch("c7n_azure_container_apps.policy_loader.load_resources")
-@patch("c7n_azure_container_apps.policy_loader.ContainerClient")
+@patch("c7n_azure_aca.policy_loader.Azure")
+@patch("c7n_azure_aca.policy_loader.load_resources")
+@patch("c7n_azure_aca.policy_loader.ContainerClient")
 def test_load_periodic_policies(mock_cc_cls, mock_load_res, mock_azure):
     policy_yaml = yaml.dump(
         {
@@ -87,7 +87,7 @@ def test_load_periodic_policies(mock_cc_cls, mock_load_res, mock_azure):
     mock_azure_instance.initialize.return_value = MagicMock()
     mock_azure.return_value = mock_azure_instance
 
-    with patch("c7n_azure_container_apps.policy_loader.PolicyCollection") as mock_pc:
+    with patch("c7n_azure_aca.policy_loader.PolicyCollection") as mock_pc:
         mock_pc.from_data.return_value = []
         load_policies_from_blob(
             storage_account_name="testaccount",
@@ -104,7 +104,7 @@ def test_load_periodic_policies(mock_cc_cls, mock_load_res, mock_azure):
     assert policy_data["policies"][0]["name"] == "test-periodic"
 
 
-@patch("c7n_azure_container_apps.policy_loader.ContainerClient")
+@patch("c7n_azure_aca.policy_loader.ContainerClient")
 def test_load_no_matching_policies(mock_cc_cls):
     policy_yaml = yaml.dump(
         {
@@ -146,7 +146,7 @@ def test_load_no_matching_policies(mock_cc_cls):
     assert len(result) == 0
 
 
-@patch("c7n_azure_container_apps.policy_loader.ContainerClient")
+@patch("c7n_azure_aca.policy_loader.ContainerClient")
 def test_load_skips_non_yaml_files(mock_cc_cls):
     blob_mock = _make_blob_name_mock("readme.txt")
 
@@ -164,7 +164,7 @@ def test_load_skips_non_yaml_files(mock_cc_cls):
     assert len(result) == 0
 
 
-@patch("c7n_azure_container_apps.policy_loader.ContainerClient")
+@patch("c7n_azure_aca.policy_loader.ContainerClient")
 def test_load_skips_invalid_yaml(mock_cc_cls):
     blob_mock = _make_blob_name_mock("bad.yaml")
     blob_client_mock = MagicMock()
@@ -185,7 +185,7 @@ def test_load_skips_invalid_yaml(mock_cc_cls):
     assert len(result) == 0
 
 
-@patch("c7n_azure_container_apps.policy_loader.ContainerClient")
+@patch("c7n_azure_aca.policy_loader.ContainerClient")
 def test_load_handles_blob_list_failure(mock_cc_cls):
     """Failure to list blobs should return empty collection gracefully."""
     container_client_mock = MagicMock()
@@ -202,7 +202,7 @@ def test_load_handles_blob_list_failure(mock_cc_cls):
     assert len(result) == 0
 
 
-@patch("c7n_azure_container_apps.policy_loader.ContainerClient")
+@patch("c7n_azure_aca.policy_loader.ContainerClient")
 def test_load_handles_blob_download_failure(mock_cc_cls):
     """Failure to download a single blob should skip it and continue."""
     blob_mock = _make_blob_name_mock("policies.yml")
@@ -224,7 +224,7 @@ def test_load_handles_blob_download_failure(mock_cc_cls):
     assert len(result) == 0
 
 
-@patch("c7n_azure_container_apps.policy_loader.ContainerClient")
+@patch("c7n_azure_aca.policy_loader.ContainerClient")
 def test_load_skips_non_dict_yaml(mock_cc_cls):
     """YAML that parses to a list instead of dict should be skipped."""
     blob_mock = _make_blob_name_mock("list.yaml")

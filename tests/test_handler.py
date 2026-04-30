@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from c7n_azure_container_apps.handler import extract_subscription_id, _parse_subscription_ids
+from c7n_azure_aca.handler import extract_subscription_id, _parse_subscription_ids
 
 
 def test_extract_subscription_id():
@@ -30,10 +30,10 @@ def test_extract_subscription_id_empty():
         "C7N_ACA_SUBSCRIPTION_IDS": "sub-aaa,sub-bbb",
     },
 )
-@patch("c7n_azure_container_apps.handler.load_policies_from_blob")
-@patch("c7n_azure_container_apps.handler.reset_session_cache")
+@patch("c7n_azure_aca.handler.load_policies_from_blob")
+@patch("c7n_azure_aca.handler.reset_session_cache")
 def test_run_schedule(mock_reset, mock_load):
-    from c7n_azure_container_apps.handler import run_schedule
+    from c7n_azure_aca.handler import run_schedule
 
     policy1 = MagicMock()
     policy1.name = "p1"
@@ -61,12 +61,12 @@ def test_run_schedule(mock_reset, mock_load):
         "C7N_ACA_QUEUE_NAME": "test-queue",
     },
 )
-@patch("c7n_azure_container_apps.handler.load_policies_from_blob")
-@patch("c7n_azure_container_apps.handler.QueueClient")
-@patch("c7n_azure_container_apps.handler.DefaultAzureCredential")
-@patch("c7n_azure_container_apps.handler.reset_session_cache")
+@patch("c7n_azure_aca.handler.load_policies_from_blob")
+@patch("c7n_azure_aca.handler.QueueClient")
+@patch("c7n_azure_aca.handler.DefaultAzureCredential")
+@patch("c7n_azure_aca.handler.reset_session_cache")
 def test_run_event(mock_reset, mock_cred, mock_queue_cls, mock_load):
-    from c7n_azure_container_apps.handler import run_event
+    from c7n_azure_aca.handler import run_event
 
     # Set up a matching policy
     policy = MagicMock()
@@ -118,11 +118,11 @@ def test_run_event(mock_reset, mock_cred, mock_queue_cls, mock_load):
         "C7N_ACA_SUBSCRIPTION_IDS": "sub-aaa",
     },
 )
-@patch("c7n_azure_container_apps.handler.load_policies_from_blob")
-@patch("c7n_azure_container_apps.handler.reset_session_cache")
+@patch("c7n_azure_aca.handler.load_policies_from_blob")
+@patch("c7n_azure_aca.handler.reset_session_cache")
 def test_run_schedule_policy_failure_continues(mock_reset, mock_load):
     """A failing policy should not stop other policies from running."""
-    from c7n_azure_container_apps.handler import run_schedule
+    from c7n_azure_aca.handler import run_schedule
 
     p1 = MagicMock()
     p1.name = "fail-policy"
@@ -158,7 +158,7 @@ def test_parse_subscription_ids_filters_empty():
 
 @patch.dict(os.environ, {"C7N_ACA_MODE": "schedule"}, clear=True)
 def test_main_missing_env_vars():
-    from c7n_azure_container_apps.handler import main
+    from c7n_azure_aca.handler import main
 
     with pytest.raises(SystemExit):
         main()
@@ -173,7 +173,7 @@ def test_main_missing_env_vars():
     },
 )
 def test_main_invalid_mode():
-    from c7n_azure_container_apps.handler import main
+    from c7n_azure_aca.handler import main
 
     with pytest.raises(SystemExit):
         main()
@@ -191,13 +191,13 @@ def test_main_invalid_mode():
         "C7N_ACA_QUEUE_NAME": "test-queue",
     },
 )
-@patch("c7n_azure_container_apps.handler.load_policies_from_blob")
-@patch("c7n_azure_container_apps.handler.QueueClient")
-@patch("c7n_azure_container_apps.handler.DefaultAzureCredential")
-@patch("c7n_azure_container_apps.handler.reset_session_cache")
+@patch("c7n_azure_aca.handler.load_policies_from_blob")
+@patch("c7n_azure_aca.handler.QueueClient")
+@patch("c7n_azure_aca.handler.DefaultAzureCredential")
+@patch("c7n_azure_aca.handler.reset_session_cache")
 def test_run_event_empty_queue(mock_reset, mock_cred, mock_queue_cls, mock_load):
     """Empty queue should complete gracefully."""
-    from c7n_azure_container_apps.handler import run_event
+    from c7n_azure_aca.handler import run_event
 
     mock_load.return_value = []
     queue_client = MagicMock()
@@ -218,13 +218,13 @@ def test_run_event_empty_queue(mock_reset, mock_cred, mock_queue_cls, mock_load)
         "C7N_ACA_QUEUE_NAME": "test-queue",
     },
 )
-@patch("c7n_azure_container_apps.handler.load_policies_from_blob")
-@patch("c7n_azure_container_apps.handler.QueueClient")
-@patch("c7n_azure_container_apps.handler.DefaultAzureCredential")
-@patch("c7n_azure_container_apps.handler.reset_session_cache")
+@patch("c7n_azure_aca.handler.load_policies_from_blob")
+@patch("c7n_azure_aca.handler.QueueClient")
+@patch("c7n_azure_aca.handler.DefaultAzureCredential")
+@patch("c7n_azure_aca.handler.reset_session_cache")
 def test_run_event_poison_pill_deleted(mock_reset, mock_cred, mock_queue_cls, mock_load):
     """Invalid message content should be deleted (poison pill prevention)."""
-    from c7n_azure_container_apps.handler import run_event
+    from c7n_azure_aca.handler import run_event
 
     mock_load.return_value = []
     msg = MagicMock()
@@ -249,13 +249,13 @@ def test_run_event_poison_pill_deleted(mock_reset, mock_cred, mock_queue_cls, mo
         "C7N_ACA_QUEUE_NAME": "test-queue",
     },
 )
-@patch("c7n_azure_container_apps.handler.load_policies_from_blob")
-@patch("c7n_azure_container_apps.handler.QueueClient")
-@patch("c7n_azure_container_apps.handler.DefaultAzureCredential")
-@patch("c7n_azure_container_apps.handler.reset_session_cache")
+@patch("c7n_azure_aca.handler.load_policies_from_blob")
+@patch("c7n_azure_aca.handler.QueueClient")
+@patch("c7n_azure_aca.handler.DefaultAzureCredential")
+@patch("c7n_azure_aca.handler.reset_session_cache")
 def test_run_event_unmonitored_subscription(mock_reset, mock_cred, mock_queue_cls, mock_load):
     """Event from an unmonitored subscription should log warning and still delete message."""
-    from c7n_azure_container_apps.handler import run_event
+    from c7n_azure_aca.handler import run_event
 
     mock_load.return_value = []
 
@@ -284,11 +284,11 @@ def test_run_event_unmonitored_subscription(mock_reset, mock_cred, mock_queue_cl
         "C7N_ACA_SUBSCRIPTION_IDS": "sub-aaa",
     },
 )
-@patch("c7n_azure_container_apps.handler.load_policies_from_blob")
-@patch("c7n_azure_container_apps.handler.reset_session_cache")
+@patch("c7n_azure_aca.handler.load_policies_from_blob")
+@patch("c7n_azure_aca.handler.reset_session_cache")
 def test_run_schedule_no_policies(mock_reset, mock_load):
     """No policies found should complete without error."""
-    from c7n_azure_container_apps.handler import run_schedule
+    from c7n_azure_aca.handler import run_schedule
 
     mock_load.return_value = []
 

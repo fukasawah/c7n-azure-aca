@@ -5,7 +5,7 @@ import json
 
 import pytest
 
-from c7n_azure_container_apps.event_matcher import (
+from c7n_azure_aca.event_matcher import (
     decode_queue_message,
     get_operation_name,
     matches_policy,

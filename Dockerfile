@@ -11,4 +11,4 @@ FROM dhi.io/python:3.14
 WORKDIR /app
 COPY --from=builder /app/.venv /app/.venv
 ENV PATH="/app/.venv/bin:$PATH"
-ENTRYPOINT ["python", "-m", "c7n_azure_container_apps"]
+ENTRYPOINT ["python", "-m", "c7n_azure_aca"]

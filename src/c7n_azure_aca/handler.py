@@ -12,8 +12,8 @@ from azure.storage.queue import QueueClient
 
 from c7n.utils import reset_session_cache
 
-from c7n_azure_container_apps.event_matcher import decode_queue_message, matches_policy
-from c7n_azure_container_apps.policy_loader import load_policies_from_blob
+from c7n_azure_aca.event_matcher import decode_queue_message, matches_policy
+from c7n_azure_aca.policy_loader import load_policies_from_blob
 
 log = logging.getLogger("c7n_aca.handler")
 
