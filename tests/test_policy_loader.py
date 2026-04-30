@@ -94,7 +94,7 @@ def test_load_periodic_policies(mock_cc_cls, mock_load_res, mock_azure):
             container_name="policies",
             mode_type="container-periodic",
             subscription_id="sub-123",
-            output_dir="azure://testaccount/output",
+            output_dir="azure://testaccount.blob.core.windows.net/output",
         )
 
     # from_data should receive only the periodic policy
@@ -140,7 +140,7 @@ def test_load_no_matching_policies(mock_cc_cls):
         container_name="policies",
         mode_type="container-periodic",
         subscription_id="sub-123",
-        output_dir="azure://testaccount/output",
+        output_dir="azure://testaccount.blob.core.windows.net/output",
     )
     # No matching policies → empty collection
     assert len(result) == 0

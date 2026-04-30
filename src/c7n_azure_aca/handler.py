@@ -52,7 +52,7 @@ def run_schedule():
     storage_account = os.environ["C7N_ACA_STORAGE_ACCOUNT"]
     output_dir = os.environ.get(
         "C7N_ACA_OUTPUT_DIR",
-        f"azure://{storage_account}/output",
+        f"azure://{storage_account}.blob.core.windows.net/output",
     )
     subscription_ids = _parse_subscription_ids()
 
@@ -71,7 +71,7 @@ def run_schedule():
 
         for policy in policies:
             try:
-                policy.run()
+                policy.poll()
             except Exception:
                 log.exception("Policy failed: %s", policy.name)
 
@@ -86,7 +86,7 @@ def run_event():
     queue_name = os.environ.get("C7N_ACA_QUEUE_NAME", "custodian-events")
     output_dir = os.environ.get(
         "C7N_ACA_OUTPUT_DIR",
-        f"azure://{storage_account}/output",
+        f"azure://{storage_account}.blob.core.windows.net/output",
     )
     subscription_ids = _parse_subscription_ids()
 

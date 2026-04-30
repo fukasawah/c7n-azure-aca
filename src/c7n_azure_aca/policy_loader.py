@@ -30,7 +30,7 @@ def load_policies_from_blob(
         container_name: Blob container holding policy YAML files.
         mode_type: Filter policies to this mode (e.g. "container-periodic" or "container-event").
         subscription_id: Target Azure subscription ID for policy execution.
-        output_dir: c7n output directory URI (e.g. "azure://account/output").
+        output_dir: c7n output directory URI (e.g. "azure://account.blob.core.windows.net/output").
 
     Returns:
         A PolicyCollection containing only policies whose mode.type matches mode_type.

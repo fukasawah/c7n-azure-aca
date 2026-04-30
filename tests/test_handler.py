@@ -48,8 +48,8 @@ def test_run_schedule(mock_reset, mock_load):
     assert calls[1].kwargs["subscription_id"] == "sub-bbb"
     assert calls[0].kwargs["mode_type"] == "container-periodic"
 
-    # policy.run() should be called for each subscription
-    assert policy1.run.call_count == 2
+    # Periodic policies must use the poll execution path.
+    assert policy1.poll.call_count == 2
 
 
 @patch.dict(
@@ -126,7 +126,7 @@ def test_run_schedule_policy_failure_continues(mock_reset, mock_load):
 
     p1 = MagicMock()
     p1.name = "fail-policy"
-    p1.run.side_effect = RuntimeError("boom")
+    p1.poll.side_effect = RuntimeError("boom")
     p2 = MagicMock()
     p2.name = "ok-policy"
     mock_load.return_value = [p1, p2]
@@ -134,8 +134,8 @@ def test_run_schedule_policy_failure_continues(mock_reset, mock_load):
     # Should not raise
     run_schedule()
 
-    p1.run.assert_called_once()
-    p2.run.assert_called_once()
+    p1.poll.assert_called_once()
+    p2.poll.assert_called_once()
 
 
 # --- _parse_subscription_ids tests ---
