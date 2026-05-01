@@ -154,7 +154,7 @@ az deployment sub create \
     storageAccountName="$STORAGE_ACCOUNT" \
     location="$LOCATION" \
     targetSubscriptionIds="[\"$TEST_SUBSCRIPTION_ID\"]" \
-    assignContributorRole=true \
+    createAndAssignCustomRole=true \
     containerImage="$CONTAINER_IMAGE"
 
 grant_storage_data_access

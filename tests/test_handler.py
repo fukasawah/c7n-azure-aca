@@ -3,7 +3,7 @@
 import base64
 import json
 import os
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 
@@ -96,7 +96,7 @@ def test_run_event(mock_reset, mock_cred, mock_queue_cls, mock_load):
     msg.content = base64.b64encode(json.dumps(event).encode()).decode()
 
     queue_client = MagicMock()
-    queue_client.receive_messages.return_value = [msg]
+    queue_client.receive_messages.side_effect = [[msg], []]
     mock_queue_cls.return_value = queue_client
 
     run_event()
@@ -108,6 +108,12 @@ def test_run_event(mock_reset, mock_cred, mock_queue_cls, mock_load):
 
     # Message should be deleted after processing
     queue_client.delete_message.assert_called_once_with(msg)
+    queue_client.receive_messages.assert_has_calls(
+        [
+            call(max_messages=30, visibility_timeout=300),
+            call(max_messages=30, visibility_timeout=300),
+        ]
+    )
 
 
 @patch.dict(
@@ -231,7 +237,7 @@ def test_run_event_poison_pill_deleted(mock_reset, mock_cred, mock_queue_cls, mo
     msg.content = "not-valid-base64!!!"
 
     queue_client = MagicMock()
-    queue_client.receive_messages.return_value = [msg]
+    queue_client.receive_messages.side_effect = [[msg], []]
     mock_queue_cls.return_value = queue_client
 
     run_event()
@@ -268,12 +274,79 @@ def test_run_event_unmonitored_subscription(mock_reset, mock_cred, mock_queue_cl
     msg.content = base64.b64encode(json.dumps(event).encode()).decode()
 
     queue_client = MagicMock()
-    queue_client.receive_messages.return_value = [msg]
+    queue_client.receive_messages.side_effect = [[msg], []]
     mock_queue_cls.return_value = queue_client
 
     run_event()
 
     queue_client.delete_message.assert_called_once_with(msg)
+
+
+@patch.dict(
+    os.environ,
+    {
+        "C7N_ACA_MODE": "event",
+        "C7N_ACA_STORAGE_ACCOUNT": "testaccount",
+        "C7N_ACA_SUBSCRIPTION_IDS": "sub-111",
+        "C7N_ACA_QUEUE_NAME": "test-queue",
+        "C7N_ACA_EVENT_BATCH_SIZE": "2",
+        "C7N_ACA_QUEUE_VISIBILITY_TIMEOUT": "120",
+    },
+)
+@patch("c7n_azure_aca.handler.load_policies_from_blob")
+@patch("c7n_azure_aca.handler.QueueClient")
+@patch("c7n_azure_aca.handler.DefaultAzureCredential")
+@patch("c7n_azure_aca.handler.reset_session_cache")
+def test_run_event_drains_multiple_batches(mock_reset, mock_cred, mock_queue_cls, mock_load):
+    """Event mode should continue receiving until the queue is drained."""
+    from c7n_azure_aca.handler import run_event
+
+    policy = MagicMock()
+    policy.name = "test-policy"
+    policy.data = {
+        "mode": {
+            "type": "container-event",
+            "events": [
+                {
+                    "resourceProvider": "Microsoft.Compute/virtualMachines",
+                    "event": "write",
+                }
+            ],
+        }
+    }
+    mock_load.return_value = [policy]
+
+    def make_message(event_id: str):
+        event = {
+            "id": event_id,
+            "subject": "/subscriptions/sub-111/resourceGroups/rg/providers/Microsoft.Compute/virtualMachines/vm1",
+            "data": {
+                "operationName": "Microsoft.Compute/virtualMachines/write",
+            },
+        }
+        msg = MagicMock()
+        msg.content = base64.b64encode(json.dumps(event).encode()).decode()
+        return msg
+
+    msg1 = make_message("evt-1")
+    msg2 = make_message("evt-2")
+    msg3 = make_message("evt-3")
+
+    queue_client = MagicMock()
+    queue_client.receive_messages.side_effect = [[msg1, msg2], [msg3], []]
+    mock_queue_cls.return_value = queue_client
+
+    run_event()
+
+    assert policy.push.call_count == 3
+    assert queue_client.delete_message.call_count == 3
+    queue_client.receive_messages.assert_has_calls(
+        [
+            call(max_messages=2, visibility_timeout=120),
+            call(max_messages=2, visibility_timeout=120),
+            call(max_messages=2, visibility_timeout=120),
+        ]
+    )
 
 
 @patch.dict(

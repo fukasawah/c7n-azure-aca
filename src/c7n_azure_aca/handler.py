@@ -17,6 +17,9 @@ from c7n_azure_aca.policy_loader import load_policies_from_blob
 
 log = logging.getLogger("c7n_aca.handler")
 
+DEFAULT_EVENT_BATCH_SIZE = 30
+DEFAULT_QUEUE_VISIBILITY_TIMEOUT = 300
+
 
 def main():
     logging.basicConfig(
@@ -45,6 +48,29 @@ def _parse_subscription_ids() -> list[str]:
     """Parse and filter C7N_ACA_SUBSCRIPTION_IDS into a clean list."""
     raw = os.environ["C7N_ACA_SUBSCRIPTION_IDS"].split(",")
     return [s.strip() for s in raw if s.strip()]
+
+
+def _get_int_env(name: str, default: int, minimum: int = 1, maximum: int | None = None) -> int:
+    """Read an integer environment variable and fall back to a default if invalid."""
+    raw = os.environ.get(name)
+    if raw in (None, ""):
+        return default
+
+    try:
+        value = int(raw)
+    except ValueError:
+        log.warning("Invalid integer for %s=%r, using default %s", name, raw, default)
+        return default
+
+    if value < minimum:
+        log.warning("%s must be >= %s, using default %s", name, minimum, default)
+        return default
+
+    if maximum is not None and value > maximum:
+        log.warning("%s must be <= %s, using default %s", name, maximum, default)
+        return default
+
+    return value
 
 
 def run_schedule():
@@ -84,6 +110,16 @@ def run_event():
     """Process queue messages and run matching container-event policies."""
     storage_account = os.environ["C7N_ACA_STORAGE_ACCOUNT"]
     queue_name = os.environ.get("C7N_ACA_QUEUE_NAME", "custodian-events")
+    event_batch_size = _get_int_env(
+        "C7N_ACA_EVENT_BATCH_SIZE",
+        DEFAULT_EVENT_BATCH_SIZE,
+        minimum=1,
+        maximum=31,
+    )
+    visibility_timeout = _get_int_env(
+        "C7N_ACA_QUEUE_VISIBILITY_TIMEOUT",
+        DEFAULT_QUEUE_VISIBILITY_TIMEOUT,
+    )
     output_dir = os.environ.get(
         "C7N_ACA_OUTPUT_DIR",
         f"azure://{storage_account}.blob.core.windows.net/output",
@@ -108,46 +144,55 @@ def run_event():
             output_dir=output_dir,
         )
 
-    # Process queue messages
-    messages = queue_client.receive_messages(
-        max_messages=32,
-        visibility_timeout=300,
-    )
-    for message in messages:
-        try:
-            event = decode_queue_message(message.content)
-            subject = event.get("subject", "")
-            event_sub_id = extract_subscription_id(subject)
+    processed_messages = 0
+    while True:
+        messages = list(
+            queue_client.receive_messages(
+                max_messages=event_batch_size,
+                visibility_timeout=visibility_timeout,
+            )
+        )
+        if not messages:
+            break
 
-            if event_sub_id not in policies_by_sub:
-                log.warning(
-                    "Event from unmonitored subscription %s, skipping", event_sub_id or "(empty)"
-                )
-            else:
-                policies = policies_by_sub[event_sub_id]
-                for policy in policies:
-                    if matches_policy(event, policy):
-                        log.info(
-                            "Running policy %s for event %s",
-                            policy.name,
-                            event.get("data", {}).get("operationName"),
-                        )
-                        try:
-                            policy.push(event, None)
-                        except Exception:
-                            log.exception("Policy failed: %s", policy.name)
-        except Exception:
-            log.exception("Failed to process queue message")
-        finally:
-            # Always delete the message to prevent poison-pill loops
+        log.info("Received %d queue messages", len(messages))
+        for message in messages:
             try:
-                queue_client.delete_message(message)
+                event = decode_queue_message(message.content)
+                subject = event.get("subject", "")
+                event_sub_id = extract_subscription_id(subject)
+
+                if event_sub_id not in policies_by_sub:
+                    log.warning(
+                        "Event from unmonitored subscription %s, skipping",
+                        event_sub_id or "(empty)",
+                    )
+                else:
+                    policies = policies_by_sub[event_sub_id]
+                    for policy in policies:
+                        if matches_policy(event, policy):
+                            log.info(
+                                "Running policy %s for event %s",
+                                policy.name,
+                                event.get("data", {}).get("operationName"),
+                            )
+                            try:
+                                policy.push(event, None)
+                            except Exception:
+                                log.exception("Policy failed: %s", policy.name)
             except Exception:
-                log.exception("Failed to delete queue message")
+                log.exception("Failed to process queue message")
+            finally:
+                # Always delete the message to prevent poison-pill loops
+                try:
+                    queue_client.delete_message(message)
+                except Exception:
+                    log.exception("Failed to delete queue message")
 
-        reset_session_cache()
+            processed_messages += 1
+            reset_session_cache()
 
-    log.info("Event run complete")
+    log.info("Event run complete processed_messages=%d", processed_messages)
 
 
 def extract_subscription_id(subject: str) -> str:

@@ -8,7 +8,12 @@ param containerImage string
 param storageAccountName string
 param queueName string = 'custodian-events'
 param subscriptionIdsCsv string
-param maxExecutions int = 10
+@minValue(1)
+@maxValue(31)
+param eventBatchSize int = 30
+@minValue(1)
+param visibilityTimeout int = 300
+param maxExecutions int = 1
 param jobCpu string = '0.25'
 param jobMemory string = '0.5Gi'
 param tags object = {}
@@ -44,7 +49,8 @@ resource job 'Microsoft.App/jobs@2024-10-02-preview' = {
               metadata: {
                 accountName: storageAccountName
                 queueName: queueName
-                queueLength: '1'
+                queueLength: string(eventBatchSize)
+                queueLengthStrategy: 'visibleonly'
                 cloud: 'AzurePublicCloud'
               }
             }
@@ -67,6 +73,8 @@ resource job 'Microsoft.App/jobs@2024-10-02-preview' = {
             { name: 'C7N_ACA_MODE', value: 'event' }
             { name: 'C7N_ACA_STORAGE_ACCOUNT', value: storageAccountName }
             { name: 'C7N_ACA_QUEUE_NAME', value: queueName }
+            { name: 'C7N_ACA_EVENT_BATCH_SIZE', value: string(eventBatchSize) }
+            { name: 'C7N_ACA_QUEUE_VISIBILITY_TIMEOUT', value: string(visibilityTimeout) }
             { name: 'C7N_ACA_SUBSCRIPTION_IDS', value: subscriptionIdsCsv }
             { name: 'C7N_ACA_OUTPUT_DIR', value: 'azure://${outputHost}/output' }
             { name: 'AZURE_CLIENT_ID', value: identityClientId }

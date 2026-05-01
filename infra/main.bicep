@@ -39,6 +39,15 @@ param createAndAssignCustomRole bool = false
 @description('Optional custom role name override. Leave empty to use a deterministic default name.')
 param customRoleName string = ''
 
+@description('Include the common read permissions used by many policy checks in the managed identity custom role')
+param includeCommonReadPermissions bool = true
+
+@description('Allow resource tag updates through the managed identity custom role')
+param allowTagManagement bool = true
+
+@description('Allow start and stop style power operations through the managed identity custom role')
+param allowPowerControl bool = false
+
 @description('Watch virtual machine write events in Event Grid')
 param watchVirtualMachineWriteEvents bool = true
 
@@ -50,18 +59,6 @@ param watchAppServiceWriteEvents bool = false
 
 @description('Watch Azure SQL database write events in Event Grid')
 param watchSqlDatabaseWriteEvents bool = false
-
-@description('Allow resource tag updates through the managed identity custom role')
-param allowTagManagement bool = false
-
-@description('Allow virtual machine power operations through the managed identity custom role')
-param allowVirtualMachinePowerControl bool = false
-
-@description('Allow App Service app setting updates through the managed identity custom role')
-param allowAppServiceAppSettingsManagement bool = false
-
-@description('Assign Contributor role to UAI on target subscriptions (for mutating actions)')
-param assignContributorRole bool = false
 
 @description('Storage Queue name for events')
 param queueName string = 'custodian-events'
@@ -86,10 +83,19 @@ param alertQueueDepthThreshold int = 100
 @description('Job failure count threshold for alerting (per 5-minute window)')
 param alertJobFailureThreshold int = 3
 
+@description('Target queue messages per event job execution. Keep below 32 to preserve visible-only queue counting.')
+@minValue(1)
+@maxValue(31)
+param eventBatchSize int = 30
+
+@description('Queue message visibility timeout in seconds for event processing')
+@minValue(1)
+param visibilityTimeout int = 300
+
 @description('Maximum concurrent event job executions (KEDA scaling)')
 @minValue(1)
 @maxValue(100)
-param maxExecutions int = 10
+param maxExecutions int = 1
 
 param tags object = {}
 
@@ -114,35 +120,52 @@ var customRoleAssignableScopes = [for subId in targetSubscriptionIds: '/subscrip
 var effectiveCustomRoleName = !empty(customRoleName)
   ? customRoleName
   : '${effectiveResourceGroupName}-managed-identity-role'
+var commonReadActions = [
+  'Microsoft.Resources/subscriptions/read'
+  'Microsoft.Resources/subscriptions/resourceGroups/read'
+  'Microsoft.Compute/virtualMachines/read'
+  'Microsoft.Compute/disks/read'
+  'Microsoft.Network/virtualNetworks/read'
+  'Microsoft.Network/networkInterfaces/read'
+  'Microsoft.Network/loadBalancers/read'
+  'Microsoft.Network/networkSecurityGroups/read'
+  'Microsoft.Network/publicIPAddresses/read'
+  'Microsoft.Storage/storageAccounts/read'
+  'Microsoft.Web/serverFarms/read'
+  'Microsoft.Web/sites/read'
+  'Microsoft.DBforMySQL/flexibleServers/read'
+  'Microsoft.DBforMySQL/servers/read'
+  'Microsoft.DBforPostgreSQL/flexibleServers/read'
+  'Microsoft.DBforPostgreSQL/servers/read'
+  'Microsoft.Sql/instancePools/read'
+  'Microsoft.Sql/locations/read'
+  'Microsoft.Sql/managedInstances/read'
+  'Microsoft.Resources/tags/read'
+]
+var tagManagementActions = [
+  'Microsoft.Resources/tags/write'
+]
+var powerControlActions = [
+  'Microsoft.Compute/virtualMachines/start/action'
+  'Microsoft.Compute/virtualMachines/deallocate/action'
+  'Microsoft.DBforMySQL/flexibleServers/start/action'
+  'Microsoft.DBforMySQL/flexibleServers/stop/action'
+  'Microsoft.DBforMySQL/servers/start/action'
+  'Microsoft.DBforMySQL/servers/stop/action'
+  'Microsoft.DBforPostgreSQL/flexibleServers/start/action'
+  'Microsoft.DBforPostgreSQL/flexibleServers/stop/action'
+  'Microsoft.DBforPostgreSQL/servers/start/action'
+  'Microsoft.DBforPostgreSQL/servers/stop/action'
+  'Microsoft.Sql/managedInstances/start/action'
+  'Microsoft.Sql/managedInstances/stop/action'
+]
 var customRoleActions = union(
-  [
-    'Microsoft.Resources/subscriptions/read'
-    'Microsoft.Resources/subscriptions/resourceGroups/read'
-  ],
+  includeCommonReadPermissions ? commonReadActions : [],
   allowTagManagement
-    ? [
-        'Microsoft.Resources/subscriptions/resources/read'
-        'Microsoft.Resources/subscriptions/resourceGroups/resources/read'
-        'Microsoft.Resources/tags/read'
-        'Microsoft.Resources/tags/write'
-      ]
+    ? tagManagementActions
     : [],
-  allowVirtualMachinePowerControl
-    ? [
-        'Microsoft.Compute/virtualMachines/read'
-        'Microsoft.Compute/virtualMachines/start/action'
-        'Microsoft.Compute/virtualMachines/restart/action'
-        'Microsoft.Compute/virtualMachines/powerOff/action'
-        'Microsoft.Compute/virtualMachines/deallocate/action'
-      ]
-    : [],
-  allowAppServiceAppSettingsManagement
-    ? [
-        'Microsoft.Web/sites/read'
-        'Microsoft.Web/sites/config/read'
-        'microsoft.web/sites/config/web/appsettings/write'
-        'microsoft.web/sites/config/web/appsettings/delete'
-      ]
+  allowPowerControl
+    ? powerControlActions
     : []
 )
 
@@ -242,6 +265,8 @@ module eventJob 'modules/container-apps-job-event.bicep' = {
     storageAccountName: effectiveStorageAccountName
     queueName: queueName
     subscriptionIdsCsv: subscriptionIdsCsv
+    eventBatchSize: eventBatchSize
+    visibilityTimeout: visibilityTimeout
     maxExecutions: maxExecutions
     jobCpu: jobCpu
     jobMemory: jobMemory
@@ -284,7 +309,6 @@ module subscriptionRoleAssignments 'modules/role-assignment-subscription.bicep' 
     params: {
       identityPrincipalId: identity.outputs.identityPrincipalId
       roleDefinitionId: createAndAssignCustomRole ? customRole!.outputs.roleDefinitionId : ''
-      assignContributorRole: assignContributorRole
     }
   }
 ]

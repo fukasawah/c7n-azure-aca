@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.42.1.51946",
-      "templateHash": "13612489884478643741"
+      "templateHash": "11765529415037994943"
     }
   },
   "parameters": {
@@ -122,9 +122,26 @@
         "description": "Job failure count threshold for alerting (per 5-minute window)"
       }
     },
+    "eventBatchSize": {
+      "type": "int",
+      "defaultValue": 30,
+      "minValue": 1,
+      "maxValue": 31,
+      "metadata": {
+        "description": "Target queue messages per event job execution. Keep below 32 to preserve visible-only queue counting."
+      }
+    },
+    "visibilityTimeout": {
+      "type": "int",
+      "defaultValue": 300,
+      "minValue": 1,
+      "metadata": {
+        "description": "Queue message visibility timeout in seconds for event processing"
+      }
+    },
     "maxExecutions": {
       "type": "int",
-      "defaultValue": 10,
+      "defaultValue": 1,
       "minValue": 1,
       "maxValue": 100,
       "metadata": {
@@ -147,6 +164,27 @@
       "defaultValue": "",
       "metadata": {
         "description": "Optional custom role name override. Leave empty to use a deterministic default name."
+      }
+    },
+    "includeCommonReadPermissions": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Include the common read permissions used by many policy checks in the managed identity custom role"
+      }
+    },
+    "allowTagManagement": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Allow resource tag updates through the managed identity custom role"
+      }
+    },
+    "allowPowerControl": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Allow start and stop style power operations through the managed identity custom role"
       }
     },
     "watchVirtualMachineWriteEvents": {
@@ -175,27 +213,6 @@
       "defaultValue": false,
       "metadata": {
         "description": "Watch Azure SQL database write events in Event Grid"
-      }
-    },
-    "allowTagManagement": {
-      "type": "bool",
-      "defaultValue": false,
-      "metadata": {
-        "description": "Allow resource tag updates through the managed identity custom role"
-      }
-    },
-    "allowVirtualMachinePowerControl": {
-      "type": "bool",
-      "defaultValue": false,
-      "metadata": {
-        "description": "Allow virtual machine power operations through the managed identity custom role"
-      }
-    },
-    "allowAppServiceAppSettingsManagement": {
-      "type": "bool",
-      "defaultValue": false,
-      "metadata": {
-        "description": "Allow App Service app setting updates through the managed identity custom role"
       }
     }
   },
@@ -244,6 +261,15 @@
           "customRoleName": {
             "value": "[parameters('customRoleName')]"
           },
+          "includeCommonReadPermissions": {
+            "value": "[parameters('includeCommonReadPermissions')]"
+          },
+          "allowTagManagement": {
+            "value": "[parameters('allowTagManagement')]"
+          },
+          "allowPowerControl": {
+            "value": "[parameters('allowPowerControl')]"
+          },
           "watchVirtualMachineWriteEvents": {
             "value": "[parameters('watchVirtualMachineWriteEvents')]"
           },
@@ -255,15 +281,6 @@
           },
           "watchSqlDatabaseWriteEvents": {
             "value": "[parameters('watchSqlDatabaseWriteEvents')]"
-          },
-          "allowTagManagement": {
-            "value": "[parameters('allowTagManagement')]"
-          },
-          "allowVirtualMachinePowerControl": {
-            "value": "[parameters('allowVirtualMachinePowerControl')]"
-          },
-          "allowAppServiceAppSettingsManagement": {
-            "value": "[parameters('allowAppServiceAppSettingsManagement')]"
           },
           "queueName": {
             "value": "[parameters('queueName')]"
@@ -286,6 +303,12 @@
           "alertJobFailureThreshold": {
             "value": "[parameters('alertJobFailureThreshold')]"
           },
+          "eventBatchSize": {
+            "value": "[parameters('eventBatchSize')]"
+          },
+          "visibilityTimeout": {
+            "value": "[parameters('visibilityTimeout')]"
+          },
           "maxExecutions": {
             "value": "[parameters('maxExecutions')]"
           },
@@ -300,7 +323,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.42.1.51946",
-              "templateHash": "13081807155336770742"
+              "templateHash": "1655430685921449231"
             }
           },
           "parameters": {
@@ -387,6 +410,27 @@
                 "description": "Optional custom role name override. Leave empty to use a deterministic default name."
               }
             },
+            "includeCommonReadPermissions": {
+              "type": "bool",
+              "defaultValue": true,
+              "metadata": {
+                "description": "Include the common read permissions used by many policy checks in the managed identity custom role"
+              }
+            },
+            "allowTagManagement": {
+              "type": "bool",
+              "defaultValue": true,
+              "metadata": {
+                "description": "Allow resource tag updates through the managed identity custom role"
+              }
+            },
+            "allowPowerControl": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Allow start and stop style power operations through the managed identity custom role"
+              }
+            },
             "watchVirtualMachineWriteEvents": {
               "type": "bool",
               "defaultValue": true,
@@ -413,34 +457,6 @@
               "defaultValue": false,
               "metadata": {
                 "description": "Watch Azure SQL database write events in Event Grid"
-              }
-            },
-            "allowTagManagement": {
-              "type": "bool",
-              "defaultValue": false,
-              "metadata": {
-                "description": "Allow resource tag updates through the managed identity custom role"
-              }
-            },
-            "allowVirtualMachinePowerControl": {
-              "type": "bool",
-              "defaultValue": false,
-              "metadata": {
-                "description": "Allow virtual machine power operations through the managed identity custom role"
-              }
-            },
-            "allowAppServiceAppSettingsManagement": {
-              "type": "bool",
-              "defaultValue": false,
-              "metadata": {
-                "description": "Allow App Service app setting updates through the managed identity custom role"
-              }
-            },
-            "assignContributorRole": {
-              "type": "bool",
-              "defaultValue": false,
-              "metadata": {
-                "description": "Assign Contributor role to UAI on target subscriptions (for mutating actions)"
               }
             },
             "queueName": {
@@ -494,9 +510,26 @@
                 "description": "Job failure count threshold for alerting (per 5-minute window)"
               }
             },
+            "eventBatchSize": {
+              "type": "int",
+              "defaultValue": 30,
+              "minValue": 1,
+              "maxValue": 31,
+              "metadata": {
+                "description": "Target queue messages per event job execution. Keep below 32 to preserve visible-only queue counting."
+              }
+            },
+            "visibilityTimeout": {
+              "type": "int",
+              "defaultValue": 300,
+              "minValue": 1,
+              "metadata": {
+                "description": "Queue message visibility timeout in seconds for event processing"
+              }
+            },
             "maxExecutions": {
               "type": "int",
-              "defaultValue": 10,
+              "defaultValue": 1,
               "minValue": 1,
               "maxValue": 100,
               "metadata": {
@@ -526,7 +559,46 @@
             "toggledEventOperationNames": "[union(if(parameters('watchVirtualMachineWriteEvents'), createArray('Microsoft.Compute/virtualMachines/write'), createArray()), if(parameters('watchStorageAccountWriteEvents'), createArray('Microsoft.Storage/storageAccounts/write'), createArray()), if(parameters('watchAppServiceWriteEvents'), createArray('Microsoft.Web/sites/write'), createArray()), if(parameters('watchSqlDatabaseWriteEvents'), createArray('Microsoft.Sql/servers/databases/write'), createArray()))]",
             "effectiveEventOperationNames": "[if(not(empty(parameters('eventOperationNames'))), parameters('eventOperationNames'), variables('toggledEventOperationNames'))]",
             "effectiveCustomRoleName": "[if(not(empty(parameters('customRoleName'))), parameters('customRoleName'), format('{0}-managed-identity-role', variables('effectiveResourceGroupName')))]",
-            "customRoleActions": "[union(createArray('Microsoft.Resources/subscriptions/read', 'Microsoft.Resources/subscriptions/resourceGroups/read'), if(parameters('allowTagManagement'), createArray('Microsoft.Resources/subscriptions/resources/read', 'Microsoft.Resources/subscriptions/resourceGroups/resources/read', 'Microsoft.Resources/tags/read', 'Microsoft.Resources/tags/write'), createArray()), if(parameters('allowVirtualMachinePowerControl'), createArray('Microsoft.Compute/virtualMachines/read', 'Microsoft.Compute/virtualMachines/start/action', 'Microsoft.Compute/virtualMachines/restart/action', 'Microsoft.Compute/virtualMachines/powerOff/action', 'Microsoft.Compute/virtualMachines/deallocate/action'), createArray()), if(parameters('allowAppServiceAppSettingsManagement'), createArray('Microsoft.Web/sites/read', 'Microsoft.Web/sites/config/read', 'microsoft.web/sites/config/web/appsettings/write', 'microsoft.web/sites/config/web/appsettings/delete'), createArray()))]"
+            "commonReadActions": [
+              "Microsoft.Resources/subscriptions/read",
+              "Microsoft.Resources/subscriptions/resourceGroups/read",
+              "Microsoft.Compute/virtualMachines/read",
+              "Microsoft.Compute/disks/read",
+              "Microsoft.Network/virtualNetworks/read",
+              "Microsoft.Network/networkInterfaces/read",
+              "Microsoft.Network/loadBalancers/read",
+              "Microsoft.Network/networkSecurityGroups/read",
+              "Microsoft.Network/publicIPAddresses/read",
+              "Microsoft.Storage/storageAccounts/read",
+              "Microsoft.Web/serverFarms/read",
+              "Microsoft.Web/sites/read",
+              "Microsoft.DBforMySQL/flexibleServers/read",
+              "Microsoft.DBforMySQL/servers/read",
+              "Microsoft.DBforPostgreSQL/flexibleServers/read",
+              "Microsoft.DBforPostgreSQL/servers/read",
+              "Microsoft.Sql/instancePools/read",
+              "Microsoft.Sql/locations/read",
+              "Microsoft.Sql/managedInstances/read",
+              "Microsoft.Resources/tags/read"
+            ],
+            "tagManagementActions": [
+              "Microsoft.Resources/tags/write"
+            ],
+            "powerControlActions": [
+              "Microsoft.Compute/virtualMachines/start/action",
+              "Microsoft.Compute/virtualMachines/deallocate/action",
+              "Microsoft.DBforMySQL/flexibleServers/start/action",
+              "Microsoft.DBforMySQL/flexibleServers/stop/action",
+              "Microsoft.DBforMySQL/servers/start/action",
+              "Microsoft.DBforMySQL/servers/stop/action",
+              "Microsoft.DBforPostgreSQL/flexibleServers/start/action",
+              "Microsoft.DBforPostgreSQL/flexibleServers/stop/action",
+              "Microsoft.DBforPostgreSQL/servers/start/action",
+              "Microsoft.DBforPostgreSQL/servers/stop/action",
+              "Microsoft.Sql/managedInstances/start/action",
+              "Microsoft.Sql/managedInstances/stop/action"
+            ],
+            "customRoleActions": "[union(if(parameters('includeCommonReadPermissions'), variables('commonReadActions'), createArray()), if(parameters('allowTagManagement'), variables('tagManagementActions'), createArray()), if(parameters('allowPowerControl'), variables('powerControlActions'), createArray()))]"
           },
           "resources": [
             {
@@ -1259,6 +1331,12 @@
                   "subscriptionIdsCsv": {
                     "value": "[variables('subscriptionIdsCsv')]"
                   },
+                  "eventBatchSize": {
+                    "value": "[parameters('eventBatchSize')]"
+                  },
+                  "visibilityTimeout": {
+                    "value": "[parameters('visibilityTimeout')]"
+                  },
                   "maxExecutions": {
                     "value": "[parameters('maxExecutions')]"
                   },
@@ -1279,7 +1357,7 @@
                     "_generator": {
                       "name": "bicep",
                       "version": "0.42.1.51946",
-                      "templateHash": "13191499533136745064"
+                      "templateHash": "15029612331267658256"
                     }
                   },
                   "parameters": {
@@ -1308,9 +1386,20 @@
                     "subscriptionIdsCsv": {
                       "type": "string"
                     },
+                    "eventBatchSize": {
+                      "type": "int",
+                      "defaultValue": 30,
+                      "minValue": 1,
+                      "maxValue": 31
+                    },
+                    "visibilityTimeout": {
+                      "type": "int",
+                      "defaultValue": 300,
+                      "minValue": 1
+                    },
                     "maxExecutions": {
                       "type": "int",
-                      "defaultValue": 10
+                      "defaultValue": 1
                     },
                     "jobCpu": {
                       "type": "string",
@@ -1360,7 +1449,8 @@
                                   "metadata": {
                                     "accountName": "[parameters('storageAccountName')]",
                                     "queueName": "[parameters('queueName')]",
-                                    "queueLength": "1",
+                                    "queueLength": "[string(parameters('eventBatchSize'))]",
+                                    "queueLengthStrategy": "visibleonly",
                                     "cloud": "AzurePublicCloud"
                                   }
                                 }
@@ -1391,6 +1481,14 @@
                                 {
                                   "name": "C7N_ACA_QUEUE_NAME",
                                   "value": "[parameters('queueName')]"
+                                },
+                                {
+                                  "name": "C7N_ACA_EVENT_BATCH_SIZE",
+                                  "value": "[string(parameters('eventBatchSize'))]"
+                                },
+                                {
+                                  "name": "C7N_ACA_QUEUE_VISIBILITY_TIMEOUT",
+                                  "value": "[string(parameters('visibilityTimeout'))]"
                                 },
                                 {
                                   "name": "C7N_ACA_SUBSCRIPTION_IDS",
@@ -1706,10 +1804,7 @@
                   "identityPrincipalId": {
                     "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('effectiveResourceGroupName')), 'Microsoft.Resources/deployments', 'identity'), '2025-04-01').outputs.identityPrincipalId.value]"
                   },
-                  "roleDefinitionId": "[if(parameters('createAndAssignCustomRole'), createObject('value', reference(subscriptionResourceId('Microsoft.Resources/deployments', 'custom-role-definition'), '2025-04-01').outputs.roleDefinitionId.value), createObject('value', ''))]",
-                  "assignContributorRole": {
-                    "value": "[parameters('assignContributorRole')]"
-                  }
+                  "roleDefinitionId": "[if(parameters('createAndAssignCustomRole'), createObject('value', reference(subscriptionResourceId('Microsoft.Resources/deployments', 'custom-role-definition'), '2025-04-01').outputs.roleDefinitionId.value), createObject('value', ''))]"
                 },
                 "template": {
                   "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
@@ -1718,7 +1813,7 @@
                     "_generator": {
                       "name": "bicep",
                       "version": "0.42.1.51946",
-                      "templateHash": "9044065531180280441"
+                      "templateHash": "4908181691111254468"
                     }
                   },
                   "parameters": {
@@ -1728,15 +1823,10 @@
                     "roleDefinitionId": {
                       "type": "string",
                       "defaultValue": ""
-                    },
-                    "assignContributorRole": {
-                      "type": "bool",
-                      "defaultValue": false
                     }
                   },
                   "variables": {
-                    "readerRoleId": "acdd72a7-3385-48ef-bd42-f606fba81ae7",
-                    "contributorRoleId": "b24988ac-6180-42a0-ab88-20f7382dd24c"
+                    "readerRoleId": "acdd72a7-3385-48ef-bd42-f606fba81ae7"
                   },
                   "resources": [
                     {
@@ -1758,17 +1848,6 @@
                       "properties": {
                         "principalId": "[parameters('identityPrincipalId')]",
                         "roleDefinitionId": "[parameters('roleDefinitionId')]",
-                        "principalType": "ServicePrincipal"
-                      }
-                    },
-                    {
-                      "condition": "[and(empty(parameters('roleDefinitionId')), parameters('assignContributorRole'))]",
-                      "type": "Microsoft.Authorization/roleAssignments",
-                      "apiVersion": "2022-04-01",
-                      "name": "[guid(subscription().id, parameters('identityPrincipalId'), variables('contributorRoleId'))]",
-                      "properties": {
-                        "principalId": "[parameters('identityPrincipalId')]",
-                        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('contributorRoleId'))]",
                         "principalType": "ServicePrincipal"
                       }
                     }
