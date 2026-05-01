@@ -155,8 +155,6 @@ az deployment sub create \
     location="$LOCATION" \
     targetSubscriptionIds="[\"$TEST_SUBSCRIPTION_ID\"]" \
     assignContributorRole=true \
-    targetRoleAssignmentScope="resource-group" \
-    targetResourceGroupName="$RESOURCE_GROUP" \
     containerImage="$CONTAINER_IMAGE"
 
 grant_storage_data_access

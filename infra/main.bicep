@@ -6,17 +6,20 @@ targetScope = 'subscription'
 @description('Azure region for all resources')
 param location string = 'japaneast'
 
-@description('Resource group name')
-param resourceGroupName string = 'rg-custodian'
+@description('Base name used to derive resource names when explicit names are not provided')
+param baseName string = 'c7n-azure-aca'
 
-@description('Container Apps Environment name')
-param environmentName string = 'custodian-env'
+@description('Optional resource group name override. Leave empty to derive from baseName.')
+param resourceGroupName string = ''
 
-@description('Storage account name (globally unique)')
-param storageAccountName string
+@description('Optional Container Apps Environment name override. Leave empty to derive from baseName.')
+param environmentName string = ''
 
-@description('Managed Identity name')
-param identityName string = 'custodian-identity'
+@description('Optional storage account name override. Leave empty to generate a globally unique name from baseName.')
+param storageAccountName string = ''
+
+@description('Optional Managed Identity name override. Leave empty to derive from baseName.')
+param identityName string = ''
 
 @description('Container image reference')
 param containerImage string = 'ghcr.io/fukasawah/c7n-azure-aca:latest'
@@ -60,16 +63,6 @@ param allowAppServiceAppSettingsManagement bool = false
 @description('Assign Contributor role to UAI on target subscriptions (for mutating actions)')
 param assignContributorRole bool = false
 
-@description('Scope used for managed identity RBAC on target resources')
-@allowed([
-  'subscription'
-  'resource-group'
-])
-param targetRoleAssignmentScope string = 'subscription'
-
-@description('Target resource group name for managed identity RBAC when using resource-group scope')
-param targetResourceGroupName string = ''
-
 @description('Storage Queue name for events')
 param queueName string = 'custodian-events'
 
@@ -101,6 +94,14 @@ param maxExecutions int = 10
 param tags object = {}
 
 // Comma-separated subscription IDs for container env var
+var normalizedBaseName = take(replace(replace(toLower(baseName), '-', ''), '_', ''), 11)
+var effectiveResourceGroupName = !empty(resourceGroupName) ? resourceGroupName : 'rg-${baseName}'
+var effectiveEnvironmentName = !empty(environmentName) ? environmentName : '${baseName}-env'
+var effectiveIdentityName = !empty(identityName) ? identityName : '${baseName}-identity'
+var storageAccountNamePrefix = take('sa${normalizedBaseName}', 13)
+var effectiveStorageAccountName = !empty(storageAccountName)
+  ? storageAccountName
+  : '${storageAccountNamePrefix}${take(uniqueString(subscription().id, effectiveResourceGroupName, baseName), 11)}'
 var subscriptionIdsCsv = join(targetSubscriptionIds, ',')
 var toggledEventOperationNames = union(
   watchVirtualMachineWriteEvents ? ['Microsoft.Compute/virtualMachines/write'] : [],
@@ -109,14 +110,10 @@ var toggledEventOperationNames = union(
   watchSqlDatabaseWriteEvents ? ['Microsoft.Sql/servers/databases/write'] : []
 )
 var effectiveEventOperationNames = !empty(eventOperationNames) ? eventOperationNames : toggledEventOperationNames
-var subscriptionCustomRoleAssignableScopes = [for subId in targetSubscriptionIds: '/subscriptions/${subId}']
-var resourceGroupCustomRoleAssignableScopes = [for subId in targetSubscriptionIds: '/subscriptions/${subId}/resourceGroups/${targetResourceGroupName}']
-var customRoleAssignableScopes = targetRoleAssignmentScope == 'subscription'
-  ? subscriptionCustomRoleAssignableScopes
-  : resourceGroupCustomRoleAssignableScopes
+var customRoleAssignableScopes = [for subId in targetSubscriptionIds: '/subscriptions/${subId}']
 var effectiveCustomRoleName = !empty(customRoleName)
   ? customRoleName
-  : '${resourceGroupName}-managed-identity-role'
+  : '${effectiveResourceGroupName}-managed-identity-role'
 var customRoleActions = union(
   [
     'Microsoft.Resources/subscriptions/read'
@@ -153,7 +150,7 @@ module customRole 'modules/custom-role-definition.bicep' = if (createAndAssignCu
   name: 'custom-role-definition'
   params: {
     roleName: effectiveCustomRoleName
-    roleDescription: 'Managed identity role for ${resourceGroupName}. Generated from template toggle parameters.'
+    roleDescription: 'Managed identity role for ${effectiveResourceGroupName}. Generated from template toggle parameters.'
     assignableScopes: customRoleAssignableScopes
     actions: customRoleActions
   }
@@ -161,7 +158,7 @@ module customRole 'modules/custom-role-definition.bicep' = if (createAndAssignCu
 
 // Resource Group
 resource rg 'Microsoft.Resources/resourceGroups@2024-03-01' = {
-  name: resourceGroupName
+  name: effectiveResourceGroupName
   location: location
   tags: tags
 }
@@ -172,7 +169,7 @@ module identity 'modules/identity.bicep' = {
   name: 'identity'
   params: {
     location: location
-    identityName: identityName
+    identityName: effectiveIdentityName
     tags: tags
   }
 }
@@ -183,7 +180,7 @@ module storage 'modules/storage.bicep' = {
   name: 'storage'
   params: {
     location: location
-    storageAccountName: storageAccountName
+    storageAccountName: effectiveStorageAccountName
     queueName: queueName
     tags: tags
   }
@@ -195,7 +192,7 @@ module logAnalytics 'modules/log-analytics.bicep' = {
   name: 'log-analytics'
   params: {
     location: location
-    workspaceName: '${environmentName}-logs'
+    workspaceName: '${effectiveEnvironmentName}-logs'
     retentionInDays: logRetentionInDays
     tags: tags
   }
@@ -207,7 +204,7 @@ module environment 'modules/container-apps-env.bicep' = {
   name: 'container-apps-env'
   params: {
     location: location
-    environmentName: environmentName
+    environmentName: effectiveEnvironmentName
     logAnalyticsWorkspaceId: logAnalytics.outputs.workspaceId
     tags: tags
   }
@@ -223,7 +220,7 @@ module scheduleJob 'modules/container-apps-job-schedule.bicep' = {
     identityId: identity.outputs.identityId
     identityClientId: identity.outputs.identityClientId
     containerImage: containerImage
-    storageAccountName: storageAccountName
+    storageAccountName: effectiveStorageAccountName
     subscriptionIdsCsv: subscriptionIdsCsv
     scheduleExpression: scheduleExpression
     jobCpu: jobCpu
@@ -242,7 +239,7 @@ module eventJob 'modules/container-apps-job-event.bicep' = {
     identityId: identity.outputs.identityId
     identityClientId: identity.outputs.identityClientId
     containerImage: containerImage
-    storageAccountName: storageAccountName
+    storageAccountName: effectiveStorageAccountName
     queueName: queueName
     subscriptionIdsCsv: subscriptionIdsCsv
     maxExecutions: maxExecutions
@@ -259,7 +256,7 @@ module alerts 'modules/alerts.bicep' = {
   params: {
     location: location
     logAnalyticsWorkspaceId: logAnalytics.outputs.workspaceId
-    storageAccountName: storageAccountName
+    storageAccountName: effectiveStorageAccountName
     queueDepthThreshold: alertQueueDepthThreshold
     jobFailureThreshold: alertJobFailureThreshold
     enableAlerts: enableAlerts
@@ -274,29 +271,16 @@ module storageRoleAssignments 'modules/role-assignments.bicep' = {
   name: 'role-assignments-storage'
   params: {
     identityPrincipalId: identity.outputs.identityPrincipalId
-    storageAccountName: storageAccountName
+    storageAccountName: effectiveStorageAccountName
   }
   dependsOn: [storage]
 }
 
 // RBAC — Reader/Contributor on each target subscription
 module subscriptionRoleAssignments 'modules/role-assignment-subscription.bicep' = [
-  for (subId, i) in targetSubscriptionIds: if (targetRoleAssignmentScope == 'subscription') {
+  for (subId, i) in targetSubscriptionIds: {
     scope: subscription(subId)
     name: 'role-assignments-sub-${i}'
-    params: {
-      identityPrincipalId: identity.outputs.identityPrincipalId
-      roleDefinitionId: createAndAssignCustomRole ? customRole!.outputs.roleDefinitionId : ''
-      assignContributorRole: assignContributorRole
-    }
-  }
-]
-
-// RBAC — Reader/Contributor on each target resource group
-module resourceGroupRoleAssignments 'modules/role-assignment-resource-group.bicep' = [
-  for (subId, i) in targetSubscriptionIds: if (targetRoleAssignmentScope == 'resource-group') {
-    scope: resourceGroup(subId, targetResourceGroupName)
-    name: 'role-assignments-rg-${i}'
     params: {
       identityPrincipalId: identity.outputs.identityPrincipalId
       roleDefinitionId: createAndAssignCustomRole ? customRole!.outputs.roleDefinitionId : ''

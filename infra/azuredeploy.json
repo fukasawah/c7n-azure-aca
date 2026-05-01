@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.42.1.51946",
-      "templateHash": "5339506017506820676"
+      "templateHash": "13612489884478643741"
     }
   },
   "parameters": {
@@ -16,31 +16,39 @@
         "description": "Azure region for all resources"
       }
     },
+    "baseName": {
+      "type": "string",
+      "defaultValue": "c7n-azure-aca",
+      "metadata": {
+        "description": "Base name used to derive resource names when explicit names are not provided"
+      }
+    },
     "resourceGroupName": {
       "type": "string",
-      "defaultValue": "rg-custodian",
+      "defaultValue": "",
       "metadata": {
-        "description": "Resource group name"
+        "description": "Optional resource group name override. Leave empty to derive from baseName."
       }
     },
     "environmentName": {
       "type": "string",
-      "defaultValue": "custodian-env",
+      "defaultValue": "",
       "metadata": {
-        "description": "Container Apps Environment name"
+        "description": "Optional Container Apps Environment name override. Leave empty to derive from baseName."
       }
     },
     "storageAccountName": {
       "type": "string",
+      "defaultValue": "",
       "metadata": {
-        "description": "Storage account name (globally unique)"
+        "description": "Optional storage account name override. Leave empty to generate a globally unique name from baseName."
       }
     },
     "identityName": {
       "type": "string",
-      "defaultValue": "custodian-identity",
+      "defaultValue": "",
       "metadata": {
-        "description": "Managed Identity name"
+        "description": "Optional Managed Identity name override. Leave empty to derive from baseName."
       }
     },
     "containerImage": {
@@ -61,87 +69,6 @@
       "type": "array",
       "metadata": {
         "description": "Target subscription IDs for policy enforcement"
-      }
-    },
-    "createAndAssignCustomRole": {
-      "type": "bool",
-      "defaultValue": true,
-      "metadata": {
-        "description": "Create a custom role for the managed identity and assign it to the target scopes"
-      }
-    },
-    "customRoleName": {
-      "type": "string",
-      "defaultValue": "",
-      "metadata": {
-        "description": "Optional custom role name override. Leave empty to use a deterministic default name."
-      }
-    },
-    "watchVirtualMachineWriteEvents": {
-      "type": "bool",
-      "defaultValue": true,
-      "metadata": {
-        "description": "Watch virtual machine write events in Event Grid"
-      }
-    },
-    "watchStorageAccountWriteEvents": {
-      "type": "bool",
-      "defaultValue": false,
-      "metadata": {
-        "description": "Watch storage account write events in Event Grid"
-      }
-    },
-    "watchAppServiceWriteEvents": {
-      "type": "bool",
-      "defaultValue": false,
-      "metadata": {
-        "description": "Watch App Service write events in Event Grid"
-      }
-    },
-    "watchSqlDatabaseWriteEvents": {
-      "type": "bool",
-      "defaultValue": false,
-      "metadata": {
-        "description": "Watch Azure SQL database write events in Event Grid"
-      }
-    },
-    "allowTagManagement": {
-      "type": "bool",
-      "defaultValue": false,
-      "metadata": {
-        "description": "Allow resource tag updates through the managed identity custom role"
-      }
-    },
-    "allowVirtualMachinePowerControl": {
-      "type": "bool",
-      "defaultValue": false,
-      "metadata": {
-        "description": "Allow virtual machine power operations through the managed identity custom role"
-      }
-    },
-    "allowAppServiceAppSettingsManagement": {
-      "type": "bool",
-      "defaultValue": false,
-      "metadata": {
-        "description": "Allow App Service app setting updates through the managed identity custom role"
-      }
-    },
-    "targetRoleAssignmentScope": {
-      "type": "string",
-      "defaultValue": "subscription",
-      "allowedValues": [
-        "subscription",
-        "resource-group"
-      ],
-      "metadata": {
-        "description": "Scope used for managed identity RBAC on target resources"
-      }
-    },
-    "targetResourceGroupName": {
-      "type": "string",
-      "defaultValue": "",
-      "metadata": {
-        "description": "Target resource group name for managed identity RBAC when using resource-group scope"
       }
     },
     "queueName": {
@@ -207,6 +134,69 @@
     "tags": {
       "type": "object",
       "defaultValue": {}
+    },
+    "createAndAssignCustomRole": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Create a custom role for the managed identity and assign it to the target scopes"
+      }
+    },
+    "customRoleName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional custom role name override. Leave empty to use a deterministic default name."
+      }
+    },
+    "watchVirtualMachineWriteEvents": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Watch virtual machine write events in Event Grid"
+      }
+    },
+    "watchStorageAccountWriteEvents": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Watch storage account write events in Event Grid"
+      }
+    },
+    "watchAppServiceWriteEvents": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Watch App Service write events in Event Grid"
+      }
+    },
+    "watchSqlDatabaseWriteEvents": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Watch Azure SQL database write events in Event Grid"
+      }
+    },
+    "allowTagManagement": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Allow resource tag updates through the managed identity custom role"
+      }
+    },
+    "allowVirtualMachinePowerControl": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Allow virtual machine power operations through the managed identity custom role"
+      }
+    },
+    "allowAppServiceAppSettingsManagement": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Allow App Service app setting updates through the managed identity custom role"
+      }
     }
   },
   "resources": [
@@ -223,6 +213,9 @@
         "parameters": {
           "location": {
             "value": "[parameters('location')]"
+          },
+          "baseName": {
+            "value": "[parameters('baseName')]"
           },
           "resourceGroupName": {
             "value": "[parameters('resourceGroupName')]"
@@ -272,12 +265,6 @@
           "allowAppServiceAppSettingsManagement": {
             "value": "[parameters('allowAppServiceAppSettingsManagement')]"
           },
-          "targetRoleAssignmentScope": {
-            "value": "[parameters('targetRoleAssignmentScope')]"
-          },
-          "targetResourceGroupName": {
-            "value": "[parameters('targetResourceGroupName')]"
-          },
           "queueName": {
             "value": "[parameters('queueName')]"
           },
@@ -313,7 +300,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.42.1.51946",
-              "templateHash": "3262721768912907031"
+              "templateHash": "13081807155336770742"
             }
           },
           "parameters": {
@@ -324,31 +311,39 @@
                 "description": "Azure region for all resources"
               }
             },
+            "baseName": {
+              "type": "string",
+              "defaultValue": "c7n-azure-aca",
+              "metadata": {
+                "description": "Base name used to derive resource names when explicit names are not provided"
+              }
+            },
             "resourceGroupName": {
               "type": "string",
-              "defaultValue": "rg-custodian",
+              "defaultValue": "",
               "metadata": {
-                "description": "Resource group name"
+                "description": "Optional resource group name override. Leave empty to derive from baseName."
               }
             },
             "environmentName": {
               "type": "string",
-              "defaultValue": "custodian-env",
+              "defaultValue": "",
               "metadata": {
-                "description": "Container Apps Environment name"
+                "description": "Optional Container Apps Environment name override. Leave empty to derive from baseName."
               }
             },
             "storageAccountName": {
               "type": "string",
+              "defaultValue": "",
               "metadata": {
-                "description": "Storage account name (globally unique)"
+                "description": "Optional storage account name override. Leave empty to generate a globally unique name from baseName."
               }
             },
             "identityName": {
               "type": "string",
-              "defaultValue": "custodian-identity",
+              "defaultValue": "",
               "metadata": {
-                "description": "Managed Identity name"
+                "description": "Optional Managed Identity name override. Leave empty to derive from baseName."
               }
             },
             "containerImage": {
@@ -448,24 +443,6 @@
                 "description": "Assign Contributor role to UAI on target subscriptions (for mutating actions)"
               }
             },
-            "targetRoleAssignmentScope": {
-              "type": "string",
-              "defaultValue": "subscription",
-              "allowedValues": [
-                "subscription",
-                "resource-group"
-              ],
-              "metadata": {
-                "description": "Scope used for managed identity RBAC on target resources"
-              }
-            },
-            "targetResourceGroupName": {
-              "type": "string",
-              "defaultValue": "",
-              "metadata": {
-                "description": "Target resource group name for managed identity RBAC when using resource-group scope"
-              }
-            },
             "queueName": {
               "type": "string",
               "defaultValue": "custodian-events",
@@ -534,28 +511,28 @@
           "variables": {
             "copy": [
               {
-                "name": "subscriptionCustomRoleAssignableScopes",
+                "name": "customRoleAssignableScopes",
                 "count": "[length(parameters('targetSubscriptionIds'))]",
-                "input": "[format('/subscriptions/{0}', parameters('targetSubscriptionIds')[copyIndex('subscriptionCustomRoleAssignableScopes')])]"
-              },
-              {
-                "name": "resourceGroupCustomRoleAssignableScopes",
-                "count": "[length(parameters('targetSubscriptionIds'))]",
-                "input": "[format('/subscriptions/{0}/resourceGroups/{1}', parameters('targetSubscriptionIds')[copyIndex('resourceGroupCustomRoleAssignableScopes')], parameters('targetResourceGroupName'))]"
+                "input": "[format('/subscriptions/{0}', parameters('targetSubscriptionIds')[copyIndex('customRoleAssignableScopes')])]"
               }
             ],
+            "normalizedBaseName": "[take(replace(replace(toLower(parameters('baseName')), '-', ''), '_', ''), 11)]",
+            "effectiveResourceGroupName": "[if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('rg-{0}', parameters('baseName')))]",
+            "effectiveEnvironmentName": "[if(not(empty(parameters('environmentName'))), parameters('environmentName'), format('{0}-env', parameters('baseName')))]",
+            "effectiveIdentityName": "[if(not(empty(parameters('identityName'))), parameters('identityName'), format('{0}-identity', parameters('baseName')))]",
+            "storageAccountNamePrefix": "[take(format('sa{0}', variables('normalizedBaseName')), 13)]",
+            "effectiveStorageAccountName": "[if(not(empty(parameters('storageAccountName'))), parameters('storageAccountName'), format('{0}{1}', variables('storageAccountNamePrefix'), take(uniqueString(subscription().id, variables('effectiveResourceGroupName'), parameters('baseName')), 11)))]",
             "subscriptionIdsCsv": "[join(parameters('targetSubscriptionIds'), ',')]",
             "toggledEventOperationNames": "[union(if(parameters('watchVirtualMachineWriteEvents'), createArray('Microsoft.Compute/virtualMachines/write'), createArray()), if(parameters('watchStorageAccountWriteEvents'), createArray('Microsoft.Storage/storageAccounts/write'), createArray()), if(parameters('watchAppServiceWriteEvents'), createArray('Microsoft.Web/sites/write'), createArray()), if(parameters('watchSqlDatabaseWriteEvents'), createArray('Microsoft.Sql/servers/databases/write'), createArray()))]",
             "effectiveEventOperationNames": "[if(not(empty(parameters('eventOperationNames'))), parameters('eventOperationNames'), variables('toggledEventOperationNames'))]",
-            "customRoleAssignableScopes": "[if(equals(parameters('targetRoleAssignmentScope'), 'subscription'), variables('subscriptionCustomRoleAssignableScopes'), variables('resourceGroupCustomRoleAssignableScopes'))]",
-            "effectiveCustomRoleName": "[if(not(empty(parameters('customRoleName'))), parameters('customRoleName'), format('{0}-managed-identity-role', parameters('resourceGroupName')))]",
+            "effectiveCustomRoleName": "[if(not(empty(parameters('customRoleName'))), parameters('customRoleName'), format('{0}-managed-identity-role', variables('effectiveResourceGroupName')))]",
             "customRoleActions": "[union(createArray('Microsoft.Resources/subscriptions/read', 'Microsoft.Resources/subscriptions/resourceGroups/read'), if(parameters('allowTagManagement'), createArray('Microsoft.Resources/subscriptions/resources/read', 'Microsoft.Resources/subscriptions/resourceGroups/resources/read', 'Microsoft.Resources/tags/read', 'Microsoft.Resources/tags/write'), createArray()), if(parameters('allowVirtualMachinePowerControl'), createArray('Microsoft.Compute/virtualMachines/read', 'Microsoft.Compute/virtualMachines/start/action', 'Microsoft.Compute/virtualMachines/restart/action', 'Microsoft.Compute/virtualMachines/powerOff/action', 'Microsoft.Compute/virtualMachines/deallocate/action'), createArray()), if(parameters('allowAppServiceAppSettingsManagement'), createArray('Microsoft.Web/sites/read', 'Microsoft.Web/sites/config/read', 'microsoft.web/sites/config/web/appsettings/write', 'microsoft.web/sites/config/web/appsettings/delete'), createArray()))]"
           },
           "resources": [
             {
               "type": "Microsoft.Resources/resourceGroups",
               "apiVersion": "2024-03-01",
-              "name": "[parameters('resourceGroupName')]",
+              "name": "[variables('effectiveResourceGroupName')]",
               "location": "[parameters('location')]",
               "tags": "[parameters('tags')]"
             },
@@ -575,7 +552,7 @@
                     "value": "[variables('effectiveCustomRoleName')]"
                   },
                   "roleDescription": {
-                    "value": "[format('Managed identity role for {0}. Generated from template toggle parameters.', parameters('resourceGroupName'))]"
+                    "value": "[format('Managed identity role for {0}. Generated from template toggle parameters.', variables('effectiveResourceGroupName'))]"
                   },
                   "assignableScopes": {
                     "value": "[variables('customRoleAssignableScopes')]"
@@ -662,7 +639,7 @@
               "type": "Microsoft.Resources/deployments",
               "apiVersion": "2025-04-01",
               "name": "identity",
-              "resourceGroup": "[parameters('resourceGroupName')]",
+              "resourceGroup": "[variables('effectiveResourceGroupName')]",
               "properties": {
                 "expressionEvaluationOptions": {
                   "scope": "inner"
@@ -673,7 +650,7 @@
                     "value": "[parameters('location')]"
                   },
                   "identityName": {
-                    "value": "[parameters('identityName')]"
+                    "value": "[variables('effectiveIdentityName')]"
                   },
                   "tags": {
                     "value": "[parameters('tags')]"
@@ -727,14 +704,14 @@
                 }
               },
               "dependsOn": [
-                "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName'))]"
+                "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('effectiveResourceGroupName'))]"
               ]
             },
             {
               "type": "Microsoft.Resources/deployments",
               "apiVersion": "2025-04-01",
               "name": "storage",
-              "resourceGroup": "[parameters('resourceGroupName')]",
+              "resourceGroup": "[variables('effectiveResourceGroupName')]",
               "properties": {
                 "expressionEvaluationOptions": {
                   "scope": "inner"
@@ -745,7 +722,7 @@
                     "value": "[parameters('location')]"
                   },
                   "storageAccountName": {
-                    "value": "[parameters('storageAccountName')]"
+                    "value": "[variables('effectiveStorageAccountName')]"
                   },
                   "queueName": {
                     "value": "[parameters('queueName')]"
@@ -905,14 +882,14 @@
                 }
               },
               "dependsOn": [
-                "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName'))]"
+                "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('effectiveResourceGroupName'))]"
               ]
             },
             {
               "type": "Microsoft.Resources/deployments",
               "apiVersion": "2025-04-01",
               "name": "log-analytics",
-              "resourceGroup": "[parameters('resourceGroupName')]",
+              "resourceGroup": "[variables('effectiveResourceGroupName')]",
               "properties": {
                 "expressionEvaluationOptions": {
                   "scope": "inner"
@@ -923,7 +900,7 @@
                     "value": "[parameters('location')]"
                   },
                   "workspaceName": {
-                    "value": "[format('{0}-logs', parameters('environmentName'))]"
+                    "value": "[format('{0}-logs', variables('effectiveEnvironmentName'))]"
                   },
                   "retentionInDays": {
                     "value": "[parameters('logRetentionInDays')]"
@@ -987,14 +964,14 @@
                 }
               },
               "dependsOn": [
-                "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName'))]"
+                "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('effectiveResourceGroupName'))]"
               ]
             },
             {
               "type": "Microsoft.Resources/deployments",
               "apiVersion": "2025-04-01",
               "name": "container-apps-env",
-              "resourceGroup": "[parameters('resourceGroupName')]",
+              "resourceGroup": "[variables('effectiveResourceGroupName')]",
               "properties": {
                 "expressionEvaluationOptions": {
                   "scope": "inner"
@@ -1005,10 +982,10 @@
                     "value": "[parameters('location')]"
                   },
                   "environmentName": {
-                    "value": "[parameters('environmentName')]"
+                    "value": "[variables('effectiveEnvironmentName')]"
                   },
                   "logAnalyticsWorkspaceId": {
-                    "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'log-analytics'), '2025-04-01').outputs.workspaceId.value]"
+                    "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('effectiveResourceGroupName')), 'Microsoft.Resources/deployments', 'log-analytics'), '2025-04-01').outputs.workspaceId.value]"
                   },
                   "tags": {
                     "value": "[parameters('tags')]"
@@ -1066,15 +1043,15 @@
                 }
               },
               "dependsOn": [
-                "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'log-analytics')]",
-                "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName'))]"
+                "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('effectiveResourceGroupName')), 'Microsoft.Resources/deployments', 'log-analytics')]",
+                "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('effectiveResourceGroupName'))]"
               ]
             },
             {
               "type": "Microsoft.Resources/deployments",
               "apiVersion": "2025-04-01",
               "name": "job-schedule",
-              "resourceGroup": "[parameters('resourceGroupName')]",
+              "resourceGroup": "[variables('effectiveResourceGroupName')]",
               "properties": {
                 "expressionEvaluationOptions": {
                   "scope": "inner"
@@ -1085,19 +1062,19 @@
                     "value": "[parameters('location')]"
                   },
                   "environmentId": {
-                    "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'container-apps-env'), '2025-04-01').outputs.environmentId.value]"
+                    "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('effectiveResourceGroupName')), 'Microsoft.Resources/deployments', 'container-apps-env'), '2025-04-01').outputs.environmentId.value]"
                   },
                   "identityId": {
-                    "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'identity'), '2025-04-01').outputs.identityId.value]"
+                    "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('effectiveResourceGroupName')), 'Microsoft.Resources/deployments', 'identity'), '2025-04-01').outputs.identityId.value]"
                   },
                   "identityClientId": {
-                    "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'identity'), '2025-04-01').outputs.identityClientId.value]"
+                    "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('effectiveResourceGroupName')), 'Microsoft.Resources/deployments', 'identity'), '2025-04-01').outputs.identityClientId.value]"
                   },
                   "containerImage": {
                     "value": "[parameters('containerImage')]"
                   },
                   "storageAccountName": {
-                    "value": "[parameters('storageAccountName')]"
+                    "value": "[variables('effectiveStorageAccountName')]"
                   },
                   "subscriptionIdsCsv": {
                     "value": "[variables('subscriptionIdsCsv')]"
@@ -1242,16 +1219,16 @@
                 }
               },
               "dependsOn": [
-                "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'container-apps-env')]",
-                "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'identity')]",
-                "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName'))]"
+                "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('effectiveResourceGroupName')), 'Microsoft.Resources/deployments', 'container-apps-env')]",
+                "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('effectiveResourceGroupName')), 'Microsoft.Resources/deployments', 'identity')]",
+                "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('effectiveResourceGroupName'))]"
               ]
             },
             {
               "type": "Microsoft.Resources/deployments",
               "apiVersion": "2025-04-01",
               "name": "job-event",
-              "resourceGroup": "[parameters('resourceGroupName')]",
+              "resourceGroup": "[variables('effectiveResourceGroupName')]",
               "properties": {
                 "expressionEvaluationOptions": {
                   "scope": "inner"
@@ -1262,19 +1239,19 @@
                     "value": "[parameters('location')]"
                   },
                   "environmentId": {
-                    "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'container-apps-env'), '2025-04-01').outputs.environmentId.value]"
+                    "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('effectiveResourceGroupName')), 'Microsoft.Resources/deployments', 'container-apps-env'), '2025-04-01').outputs.environmentId.value]"
                   },
                   "identityId": {
-                    "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'identity'), '2025-04-01').outputs.identityId.value]"
+                    "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('effectiveResourceGroupName')), 'Microsoft.Resources/deployments', 'identity'), '2025-04-01').outputs.identityId.value]"
                   },
                   "identityClientId": {
-                    "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'identity'), '2025-04-01').outputs.identityClientId.value]"
+                    "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('effectiveResourceGroupName')), 'Microsoft.Resources/deployments', 'identity'), '2025-04-01').outputs.identityClientId.value]"
                   },
                   "containerImage": {
                     "value": "[parameters('containerImage')]"
                   },
                   "storageAccountName": {
-                    "value": "[parameters('storageAccountName')]"
+                    "value": "[variables('effectiveStorageAccountName')]"
                   },
                   "queueName": {
                     "value": "[parameters('queueName')]"
@@ -1447,16 +1424,16 @@
                 }
               },
               "dependsOn": [
-                "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'container-apps-env')]",
-                "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'identity')]",
-                "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName'))]"
+                "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('effectiveResourceGroupName')), 'Microsoft.Resources/deployments', 'container-apps-env')]",
+                "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('effectiveResourceGroupName')), 'Microsoft.Resources/deployments', 'identity')]",
+                "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('effectiveResourceGroupName'))]"
               ]
             },
             {
               "type": "Microsoft.Resources/deployments",
               "apiVersion": "2025-04-01",
               "name": "alerts",
-              "resourceGroup": "[parameters('resourceGroupName')]",
+              "resourceGroup": "[variables('effectiveResourceGroupName')]",
               "properties": {
                 "expressionEvaluationOptions": {
                   "scope": "inner"
@@ -1467,10 +1444,10 @@
                     "value": "[parameters('location')]"
                   },
                   "logAnalyticsWorkspaceId": {
-                    "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'log-analytics'), '2025-04-01').outputs.workspaceId.value]"
+                    "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('effectiveResourceGroupName')), 'Microsoft.Resources/deployments', 'log-analytics'), '2025-04-01').outputs.workspaceId.value]"
                   },
                   "storageAccountName": {
-                    "value": "[parameters('storageAccountName')]"
+                    "value": "[variables('effectiveStorageAccountName')]"
                   },
                   "queueDepthThreshold": {
                     "value": "[parameters('alertQueueDepthThreshold')]"
@@ -1633,16 +1610,16 @@
                 }
               },
               "dependsOn": [
-                "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'log-analytics')]",
-                "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName'))]",
-                "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'storage')]"
+                "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('effectiveResourceGroupName')), 'Microsoft.Resources/deployments', 'log-analytics')]",
+                "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('effectiveResourceGroupName'))]",
+                "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('effectiveResourceGroupName')), 'Microsoft.Resources/deployments', 'storage')]"
               ]
             },
             {
               "type": "Microsoft.Resources/deployments",
               "apiVersion": "2025-04-01",
               "name": "role-assignments-storage",
-              "resourceGroup": "[parameters('resourceGroupName')]",
+              "resourceGroup": "[variables('effectiveResourceGroupName')]",
               "properties": {
                 "expressionEvaluationOptions": {
                   "scope": "inner"
@@ -1650,10 +1627,10 @@
                 "mode": "Incremental",
                 "parameters": {
                   "identityPrincipalId": {
-                    "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'identity'), '2025-04-01').outputs.identityPrincipalId.value]"
+                    "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('effectiveResourceGroupName')), 'Microsoft.Resources/deployments', 'identity'), '2025-04-01').outputs.identityPrincipalId.value]"
                   },
                   "storageAccountName": {
-                    "value": "[parameters('storageAccountName')]"
+                    "value": "[variables('effectiveStorageAccountName')]"
                   }
                 },
                 "template": {
@@ -1705,9 +1682,9 @@
                 }
               },
               "dependsOn": [
-                "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'identity')]",
-                "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName'))]",
-                "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'storage')]"
+                "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('effectiveResourceGroupName')), 'Microsoft.Resources/deployments', 'identity')]",
+                "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('effectiveResourceGroupName'))]",
+                "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('effectiveResourceGroupName')), 'Microsoft.Resources/deployments', 'storage')]"
               ]
             },
             {
@@ -1715,7 +1692,6 @@
                 "name": "subscriptionRoleAssignments",
                 "count": "[length(parameters('targetSubscriptionIds'))]"
               },
-              "condition": "[equals(parameters('targetRoleAssignmentScope'), 'subscription')]",
               "type": "Microsoft.Resources/deployments",
               "apiVersion": "2025-04-01",
               "name": "[format('role-assignments-sub-{0}', copyIndex())]",
@@ -1728,7 +1704,7 @@
                 "mode": "Incremental",
                 "parameters": {
                   "identityPrincipalId": {
-                    "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'identity'), '2025-04-01').outputs.identityPrincipalId.value]"
+                    "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('effectiveResourceGroupName')), 'Microsoft.Resources/deployments', 'identity'), '2025-04-01').outputs.identityPrincipalId.value]"
                   },
                   "roleDefinitionId": "[if(parameters('createAndAssignCustomRole'), createObject('value', reference(subscriptionResourceId('Microsoft.Resources/deployments', 'custom-role-definition'), '2025-04-01').outputs.roleDefinitionId.value), createObject('value', ''))]",
                   "assignContributorRole": {
@@ -1801,101 +1777,7 @@
               },
               "dependsOn": [
                 "[subscriptionResourceId('Microsoft.Resources/deployments', 'custom-role-definition')]",
-                "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'identity')]"
-              ]
-            },
-            {
-              "copy": {
-                "name": "resourceGroupRoleAssignments",
-                "count": "[length(parameters('targetSubscriptionIds'))]"
-              },
-              "condition": "[equals(parameters('targetRoleAssignmentScope'), 'resource-group')]",
-              "type": "Microsoft.Resources/deployments",
-              "apiVersion": "2025-04-01",
-              "name": "[format('role-assignments-rg-{0}', copyIndex())]",
-              "subscriptionId": "[parameters('targetSubscriptionIds')[copyIndex()]]",
-              "resourceGroup": "[parameters('targetResourceGroupName')]",
-              "properties": {
-                "expressionEvaluationOptions": {
-                  "scope": "inner"
-                },
-                "mode": "Incremental",
-                "parameters": {
-                  "identityPrincipalId": {
-                    "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'identity'), '2025-04-01').outputs.identityPrincipalId.value]"
-                  },
-                  "roleDefinitionId": "[if(parameters('createAndAssignCustomRole'), createObject('value', reference(subscriptionResourceId('Microsoft.Resources/deployments', 'custom-role-definition'), '2025-04-01').outputs.roleDefinitionId.value), createObject('value', ''))]",
-                  "assignContributorRole": {
-                    "value": "[parameters('assignContributorRole')]"
-                  }
-                },
-                "template": {
-                  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-                  "contentVersion": "1.0.0.0",
-                  "metadata": {
-                    "_generator": {
-                      "name": "bicep",
-                      "version": "0.42.1.51946",
-                      "templateHash": "9154639058947746379"
-                    }
-                  },
-                  "parameters": {
-                    "identityPrincipalId": {
-                      "type": "string"
-                    },
-                    "roleDefinitionId": {
-                      "type": "string",
-                      "defaultValue": ""
-                    },
-                    "assignContributorRole": {
-                      "type": "bool",
-                      "defaultValue": false
-                    }
-                  },
-                  "variables": {
-                    "readerRoleId": "acdd72a7-3385-48ef-bd42-f606fba81ae7",
-                    "contributorRoleId": "b24988ac-6180-42a0-ab88-20f7382dd24c"
-                  },
-                  "resources": [
-                    {
-                      "condition": "[empty(parameters('roleDefinitionId'))]",
-                      "type": "Microsoft.Authorization/roleAssignments",
-                      "apiVersion": "2022-04-01",
-                      "name": "[guid(resourceGroup().id, parameters('identityPrincipalId'), variables('readerRoleId'))]",
-                      "properties": {
-                        "principalId": "[parameters('identityPrincipalId')]",
-                        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('readerRoleId'))]",
-                        "principalType": "ServicePrincipal"
-                      }
-                    },
-                    {
-                      "condition": "[not(empty(parameters('roleDefinitionId')))]",
-                      "type": "Microsoft.Authorization/roleAssignments",
-                      "apiVersion": "2022-04-01",
-                      "name": "[guid(resourceGroup().id, parameters('identityPrincipalId'), parameters('roleDefinitionId'))]",
-                      "properties": {
-                        "principalId": "[parameters('identityPrincipalId')]",
-                        "roleDefinitionId": "[parameters('roleDefinitionId')]",
-                        "principalType": "ServicePrincipal"
-                      }
-                    },
-                    {
-                      "condition": "[and(empty(parameters('roleDefinitionId')), parameters('assignContributorRole'))]",
-                      "type": "Microsoft.Authorization/roleAssignments",
-                      "apiVersion": "2022-04-01",
-                      "name": "[guid(resourceGroup().id, parameters('identityPrincipalId'), variables('contributorRoleId'))]",
-                      "properties": {
-                        "principalId": "[parameters('identityPrincipalId')]",
-                        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('contributorRoleId'))]",
-                        "principalType": "ServicePrincipal"
-                      }
-                    }
-                  ]
-                }
-              },
-              "dependsOn": [
-                "[subscriptionResourceId('Microsoft.Resources/deployments', 'custom-role-definition')]",
-                "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'identity')]"
+                "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('effectiveResourceGroupName')), 'Microsoft.Resources/deployments', 'identity')]"
               ]
             },
             {
@@ -1915,7 +1797,7 @@
                 "mode": "Incremental",
                 "parameters": {
                   "storageAccountResourceId": {
-                    "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'storage'), '2025-04-01').outputs.storageAccountId.value]"
+                    "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('effectiveResourceGroupName')), 'Microsoft.Resources/deployments', 'storage'), '2025-04-01').outputs.storageAccountId.value]"
                   },
                   "queueName": {
                     "value": "[parameters('queueName')]"
@@ -1998,7 +1880,7 @@
                 }
               },
               "dependsOn": [
-                "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'storage')]"
+                "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('effectiveResourceGroupName')), 'Microsoft.Resources/deployments', 'storage')]"
               ]
             }
           ]

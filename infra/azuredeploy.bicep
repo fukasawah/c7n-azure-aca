@@ -3,17 +3,20 @@ targetScope = 'subscription'
 @description('Azure region for all resources')
 param location string = 'japaneast'
 
-@description('Resource group name')
-param resourceGroupName string = 'rg-custodian'
+@description('Base name used to derive resource names when explicit names are not provided')
+param baseName string = 'c7n-azure-aca'
 
-@description('Container Apps Environment name')
-param environmentName string = 'custodian-env'
+@description('Optional resource group name override. Leave empty to derive from baseName.')
+param resourceGroupName string = ''
 
-@description('Storage account name (globally unique)')
-param storageAccountName string
+@description('Optional Container Apps Environment name override. Leave empty to derive from baseName.')
+param environmentName string = ''
 
-@description('Managed Identity name')
-param identityName string = 'custodian-identity'
+@description('Optional storage account name override. Leave empty to generate a globally unique name from baseName.')
+param storageAccountName string = ''
+
+@description('Optional Managed Identity name override. Leave empty to derive from baseName.')
+param identityName string = ''
 
 @description('Container image reference')
 param containerImage string = 'ghcr.io/fukasawah/c7n-azure-aca:latest'
@@ -23,43 +26,6 @@ param scheduleExpression string = '*/15 * * * *'
 
 @description('Target subscription IDs for policy enforcement')
 param targetSubscriptionIds array
-
-@description('Create a custom role for the managed identity and assign it to the target scopes')
-param createAndAssignCustomRole bool = true
-
-@description('Optional custom role name override. Leave empty to use a deterministic default name.')
-param customRoleName string = ''
-
-@description('Watch virtual machine write events in Event Grid')
-param watchVirtualMachineWriteEvents bool = true
-
-@description('Watch storage account write events in Event Grid')
-param watchStorageAccountWriteEvents bool = false
-
-@description('Watch App Service write events in Event Grid')
-param watchAppServiceWriteEvents bool = false
-
-@description('Watch Azure SQL database write events in Event Grid')
-param watchSqlDatabaseWriteEvents bool = false
-
-@description('Allow resource tag updates through the managed identity custom role')
-param allowTagManagement bool = false
-
-@description('Allow virtual machine power operations through the managed identity custom role')
-param allowVirtualMachinePowerControl bool = false
-
-@description('Allow App Service app setting updates through the managed identity custom role')
-param allowAppServiceAppSettingsManagement bool = false
-
-@description('Scope used for managed identity RBAC on target resources')
-@allowed([
-  'subscription'
-  'resource-group'
-])
-param targetRoleAssignmentScope string = 'subscription'
-
-@description('Target resource group name for managed identity RBAC when using resource-group scope')
-param targetResourceGroupName string = ''
 
 @description('Storage Queue name for events')
 param queueName string = 'custodian-events'
@@ -91,10 +57,38 @@ param maxExecutions int = 10
 
 param tags object = {}
 
+@description('Create a custom role for the managed identity and assign it to the target scopes')
+param createAndAssignCustomRole bool = true
+
+@description('Optional custom role name override. Leave empty to use a deterministic default name.')
+param customRoleName string = ''
+
+@description('Watch virtual machine write events in Event Grid')
+param watchVirtualMachineWriteEvents bool = true
+
+@description('Watch storage account write events in Event Grid')
+param watchStorageAccountWriteEvents bool = false
+
+@description('Watch App Service write events in Event Grid')
+param watchAppServiceWriteEvents bool = false
+
+@description('Watch Azure SQL database write events in Event Grid')
+param watchSqlDatabaseWriteEvents bool = false
+
+@description('Allow resource tag updates through the managed identity custom role')
+param allowTagManagement bool = false
+
+@description('Allow virtual machine power operations through the managed identity custom role')
+param allowVirtualMachinePowerControl bool = false
+
+@description('Allow App Service app setting updates through the managed identity custom role')
+param allowAppServiceAppSettingsManagement bool = false
+
 module deployment './main.bicep' = {
   name: 'c7n-azure-aca-deployment'
   params: {
     location: location
+    baseName: baseName
     resourceGroupName: resourceGroupName
     environmentName: environmentName
     storageAccountName: storageAccountName
@@ -111,8 +105,6 @@ module deployment './main.bicep' = {
     allowTagManagement: allowTagManagement
     allowVirtualMachinePowerControl: allowVirtualMachinePowerControl
     allowAppServiceAppSettingsManagement: allowAppServiceAppSettingsManagement
-    targetRoleAssignmentScope: targetRoleAssignmentScope
-    targetResourceGroupName: targetResourceGroupName
     queueName: queueName
     jobCpu: jobCpu
     jobMemory: jobMemory

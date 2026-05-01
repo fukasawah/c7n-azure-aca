@@ -1,6 +1,7 @@
 using 'main.bicep'
 
-param storageAccountName = 'custodianstore${uniqueString(subscription().id)}'
+// Optional: override the default base name used for derived resource names.
+// param baseName = 'c7n-azure-aca'
 
 param targetSubscriptionIds = [
   // Add your target subscription IDs here

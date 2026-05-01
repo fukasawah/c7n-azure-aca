@@ -28,11 +28,13 @@ az bicep build --file infra/azuredeploy.bicep --outfile infra/azuredeploy.json
 
 - The Deploy to Azure button uses the standard Azure Portal parameter form for the ARM template.
 - The current template exposes on/off parameters for watched resource events and for the permissions added to the managed identity custom role.
+- The deploy template now uses `baseName` to derive default names such as the resource group, managed identity, Container Apps environment, and storage account. You can still override each name individually when needed.
 
 ## Customizing Permissions And Event Filters
 
 If you want to customize the values behind the deploy-button toggles, edit [infra/main.bicep](infra/main.bicep).
-
+- `baseName` is the common naming seed. By default, the template derives names such as `rg-${baseName}`, `${baseName}-env`, `${baseName}-identity`, and a globally unique storage account name like `sac7nazureaca...`.
+- If `storageAccountName` is left empty, the template generates a compliant storage account name automatically from `baseName` plus a deterministic unique suffix.
 - `customRoleActions` uses Azure RBAC action strings. Use the Microsoft Learn Azure permissions reference to find valid values for each resource provider: <https://learn.microsoft.com/azure/role-based-access-control/resource-provider-operations>
 - `toggledEventOperationNames` is used as the Event Grid `data.operationName` filter for `Microsoft.Resources.ResourceWriteSuccess` events. Microsoft Learn documents this field and shows examples such as `Microsoft.Compute/virtualMachines/write` and `Microsoft.Storage/storageAccounts/write`: <https://learn.microsoft.com/azure/event-grid/event-schema-subscriptions>
 - In practice, the Event Grid `operationName` values for Azure Resource Manager write events follow the same resource-provider operation strings used by Azure RBAC. That means the Azure permissions reference is also the practical master list when you want to add more watched write operations.
