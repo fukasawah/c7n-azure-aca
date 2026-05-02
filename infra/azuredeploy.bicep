@@ -19,7 +19,7 @@ param storageAccountName string = ''
 param identityName string = ''
 
 @description('Container image reference')
-param containerImage string = 'ghcr.io/fukasawah/c7n-azure-aca:latest'
+param containerImage string = 'ghcr.io/fukasawah/c7n-azure-aca:v0.1.7'
 
 @description('Cron expression for scheduled policy execution')
 param scheduleExpression string = '*/15 * * * *'

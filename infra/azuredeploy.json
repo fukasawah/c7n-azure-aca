@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.42.1.51946",
-      "templateHash": "11765529415037994943"
+      "templateHash": "12867470527307790519"
     }
   },
   "parameters": {
@@ -53,7 +53,7 @@
     },
     "containerImage": {
       "type": "string",
-      "defaultValue": "ghcr.io/fukasawah/c7n-azure-aca:latest",
+      "defaultValue": "ghcr.io/fukasawah/c7n-azure-aca:v0.1.7",
       "metadata": {
         "description": "Container image reference"
       }
@@ -68,7 +68,7 @@
     "targetSubscriptionIds": {
       "type": "array",
       "metadata": {
-        "description": "Target subscription IDs for policy enforcement"
+        "description": "Target subscription IDs for policy enforcement. format: [\"id1\", \"id2\"]"
       }
     },
     "queueName": {
@@ -323,7 +323,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.42.1.51946",
-              "templateHash": "1655430685921449231"
+              "templateHash": "3739296386072429002"
             }
           },
           "parameters": {
@@ -371,7 +371,7 @@
             },
             "containerImage": {
               "type": "string",
-              "defaultValue": "ghcr.io/fukasawah/c7n-azure-aca:latest",
+              "defaultValue": "ghcr.io/fukasawah/c7n-azure-aca:v0.1.7",
               "metadata": {
                 "description": "Container image reference"
               }
