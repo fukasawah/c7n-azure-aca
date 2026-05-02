@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.42.1.51946",
-      "templateHash": "12867470527307790519"
+      "templateHash": "18081736585155220197"
     }
   },
   "parameters": {
@@ -323,7 +323,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.42.1.51946",
-              "templateHash": "3739296386072429002"
+              "templateHash": "11396415024118261405"
             }
           },
           "parameters": {
@@ -1567,7 +1567,7 @@
                     "_generator": {
                       "name": "bicep",
                       "version": "0.42.1.51946",
-                      "templateHash": "17975378839384023658"
+                      "templateHash": "12373857603973458128"
                     }
                   },
                   "parameters": {
@@ -1635,8 +1635,8 @@
                         "description": "Alerts when Container Apps Jobs fail repeatedly",
                         "severity": 2,
                         "enabled": "[parameters('enableAlerts')]",
-                        "evaluationFrequency": "PT5M",
-                        "windowSize": "PT5M",
+                        "evaluationFrequency": "PT6H",
+                        "windowSize": "PT6H",
                         "skipQueryValidation": true,
                         "scopes": [
                           "[parameters('logAnalyticsWorkspaceId')]"
@@ -1675,8 +1675,8 @@
                         "description": "Alerts when the custodian event queue has too many pending messages",
                         "severity": 3,
                         "enabled": "[parameters('enableAlerts')]",
-                        "evaluationFrequency": "PT1H",
-                        "windowSize": "PT1H",
+                        "evaluationFrequency": "PT6H",
+                        "windowSize": "PT6H",
                         "scopes": [
                           "[variables('queueServiceResourceId')]"
                         ],

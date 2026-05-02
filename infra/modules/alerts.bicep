@@ -40,8 +40,8 @@ resource jobFailureAlert 'Microsoft.Insights/scheduledQueryRules@2023-12-01' = {
     description: 'Alerts when Container Apps Jobs fail repeatedly'
     severity: 2
     enabled: enableAlerts
-    evaluationFrequency: 'PT5M'
-    windowSize: 'PT5M'
+    evaluationFrequency: 'PT6H'
+    windowSize: 'PT6H'
     skipQueryValidation: true
     scopes: [
       logAnalyticsWorkspaceId
@@ -87,8 +87,8 @@ resource queueDepthAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
     description: 'Alerts when the custodian event queue has too many pending messages'
     severity: 3
     enabled: enableAlerts
-    evaluationFrequency: 'PT1H'
-    windowSize: 'PT1H'
+    evaluationFrequency: 'PT6H'
+    windowSize: 'PT6H'
     scopes: [
       queueServiceResourceId
     ]
