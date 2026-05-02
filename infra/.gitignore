@@ -1,0 +1,3 @@
+
+*.json
+!azuredeploy.json
